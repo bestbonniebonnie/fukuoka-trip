@@ -58,3 +58,13 @@ a{color:inherit;font-weight:900;text-decoration:none}.actions{display:flex;flex-
 
 @media(max-width:430px){.grid{grid-template-columns:1fr}.it-title{font-size:17px}.date-chip{min-width:68px}.airport{font-size:30px}}
 @media(min-width:760px){main,.app-header{max-width:760px;margin:auto}.modal{justify-content:center}.sheet{max-width:760px}}
+
+/* v9 fixes */
+.date-chip .date-main{font-size:13px;font-weight:950;letter-spacing:.4px}
+.date-chip .week-main{font-size:27px;font-family:Georgia,serif;font-weight:500;letter-spacing:0;margin-top:1px}
+.date-chip .day-main{display:none}
+.card-actions-row .btn.green{display:inline-flex;align-items:center;gap:4px}
+.card-actions-row .btn.green:before{content:"🗺️"}
+.chips .category-chip{display:none}
+.it-card{touch-action:auto}
+.drag-grip{touch-action:none}

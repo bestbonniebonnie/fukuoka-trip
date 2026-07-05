@@ -4,7 +4,7 @@ const OLD_KEYS=["bearTravelPlanner_v5","bearTravelPlanner_v3","bearTravelPlanner
 const types=["🏯 景點","🏨 住宿","🍜 美食","🛍 購物","☕ 咖啡廳","🌃 夜景"];
 const transports=["🚗 開車","🚶‍♀️ 走路","🚕 計程車","🚆 大眾交通","🚌 巴士"];
 const currencies=["JPY","TWD","KRW","THB"];
-const week=["SUN","MON","TUE","WED","THU","FRI","SAT"];
+const week=["Sun.","Mon.","Tue.","Wed.","Thu.","Fri.","Sat."];
 let state=loadState(), currentTripId=state.trips[0]?.id||null, currentTab=0, filterType="全部", dragInfo=null;
 
 const app=document.getElementById("app"), tabsEl=document.getElementById("tabs"), subtitle=document.getElementById("subtitle"), modal=document.getElementById("modal"), modalBody=document.getElementById("modalBody"), backToTrips=document.getElementById("backToTrips");
@@ -16,14 +16,35 @@ function norm(t){t.members||=[];t.mainCurrency||="JPY";t.rates||={JPY:.21,TWD:1,
 function save(){localStorage.setItem(STORE_KEY,JSON.stringify(state))}
 function trip(){return state.trips.find(t=>t.id==currentTripId)}
 function esc(s){return String(s??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;")}
-function readImage(input,cb){const f=input.files&&input.files[0];if(!f)return cb("");const r=new FileReader();r.onload=()=>cb(r.result);r.readAsDataURL(f)}
+function readImage(input,cb){
+  const f=input.files&&input.files[0];
+  if(!f)return cb("");
+  const r=new FileReader();
+  r.onload=()=>{
+    const im=new Image();
+    im.onload=()=>{
+      const max=900;
+      let w=im.width,h=im.height;
+      if(w>h&&w>max){h=Math.round(h*max/w);w=max}
+      if(h>=w&&h>max){w=Math.round(w*max/h);h=max}
+      const canvas=document.createElement("canvas");
+      canvas.width=w;canvas.height=h;
+      const ctx=canvas.getContext("2d");
+      ctx.drawImage(im,0,0,w,h);
+      cb(canvas.toDataURL("image/jpeg",0.72));
+    };
+    im.onerror=()=>cb(r.result);
+    im.src=r.result;
+  };
+  r.readAsDataURL(f);
+}
 function toTWD(a,c){return Math.round(Number(a||0)*(trip().rates[c]||1))}
 function openModal(h){modalBody.innerHTML=h;modal.classList.remove("hidden")}function closeModal(){modal.classList.add("hidden");modalBody.innerHTML=""}
 function tabs(){if(!currentTripId)return["旅程"];const t=trip();return["總覽","航班",...t.days.map((_,i)=>`D${i+1}`),"記帳","分攤","必買"]}
 function renderTabs(){tabsEl.innerHTML=tabs().map((x,i)=>`<button class="${i===currentTab?'active':''}" onclick="setTab(${i})">${x}</button>`).join("")}
 function setTab(i){currentTab=i;filterType="全部";render()}
 function render(){save();renderTabs();const t=trip();backToTrips.classList.toggle("hidden",!currentTripId);subtitle.textContent=currentTripId?`${t.name}｜${t.date||"未設定日期"}`:"Every journey becomes a beautiful memory. 🍂";if(!currentTripId){app.innerHTML=tripList();return} if(currentTab===0)app.innerHTML=overview();else if(currentTab===1)app.innerHTML=flight();else if(currentTab>=2&&currentTab<2+t.days.length)app.innerHTML=day(currentTab-2);else if(currentTab===2+t.days.length)app.innerHTML=expenses();else if(currentTab===3+t.days.length)app.innerHTML=splits();else app.innerHTML=buy()}
-function dayDate(i){if(!trip().startDate)return{w:"DAY",d:`Day ${i+1}`,full:`Day ${i+1}`};const d=new Date(trip().startDate+"T00:00:00");d.setDate(d.getDate()+i);return{w:week[d.getDay()],d:`${d.getMonth()+1}/${d.getDate()}`,full:`${d.getMonth()+1}/${d.getDate()}`}}
+function dayDate(i){if(!trip().startDate)return{w:"DAY",d:`Day ${i+1}`,full:`Day ${i+1}`};const d=new Date(trip().startDate+"T00:00:00");d.setDate(d.getDate()+i);return{w:week[d.getDay()],d:`${d.getDate()}`,full:`${d.getMonth()+1}/${d.getDate()}`}}
 function itemClass(x){const s=x.type||"";if(s.includes("住宿"))return"stay";if(s.includes("美食"))return"food";if(s.includes("購物"))return"shop";if(s.includes("咖啡"))return"cafe";if(s.includes("夜景"))return"night";return""}
 function typeIcon(x){const s=x||"";if(s.includes("住宿"))return"🏨";if(s.includes("美食"))return"🍜";if(s.includes("購物"))return"🛍";if(s.includes("咖啡"))return"☕";if(s.includes("夜景"))return"🌃";return"🏯"}
 
@@ -49,9 +70,9 @@ function editFlight(which){const x=trip().flight[which];openModal(`<h2>編輯${w
 function saveFlight(which){trip().flight[which]={airline:fAirline.value,no:fNo.value,from:fFrom.value,to:fTo.value,time:fTime.value,duration:fDuration.value,terminal:fTerminal.value,note:fNote.value};closeModal();render()}
 
 /* itinerary */
-function day(i){const t=trip(),list=t.days[i];return `<section class="trip-hero"><h2>${esc(t.name)}</h2><p>${esc(t.date)}</p><div class="date-strip">${t.days.map((_,idx)=>{const d=dayDate(idx);return `<div class="date-chip ${idx===i?'active':''}" onclick="setTab(${idx+2})"><div class="date-main">${d.d}</div><div class="week-main">${d.w}</div><div class="day-main">Day ${idx+1}</div></div>`}).join("")}</div><div class="weather"><div>⛅</div><div><div class="temp">--°C</div><div class="small">可自行於備註記錄天氣</div></div></div></section><div class="filters">${["全部","景點","住宿","美食","購物"].map(f=>`<button class="${filterType===f?'on':''}" onclick="filterType='${f}';render()">${f}</button>`).join("")}</div><section class="card"><h2>Day ${i+1}</h2><button class="btn primary" onclick="openItForm(${i})">＋新增行程</button></section>${filteredList(list).length?`<div class="timeline">${filteredList(list).map(x=>card(x,list.indexOf(x),i,list)).join("")}</div>`:`<section class="card empty">這個分類還沒有行程 🍂</section>`}`}
+function day(i){const t=trip(),list=t.days[i];return `<section class="trip-hero"><h2>${esc(t.name)}</h2><p>${esc(t.date)}</p><div class="date-strip">${t.days.map((_,idx)=>{const d=dayDate(idx);return `<div class="date-chip ${idx===i?'active':''}" onclick="setTab(${idx+2})"><div class="date-main">${d.w}</div><div class="week-main">${d.d}</div><div class="day-main">Day ${idx+1}</div></div>`}).join("")}</div><div class="weather"><div>⛅</div><div><div class="temp">--°C</div><div class="small">可自行於備註記錄天氣</div></div></div></section><div class="filters">${["全部","景點","住宿","美食","購物"].map(f=>`<button class="${filterType===f?'on':''}" onclick="filterType='${f}';render()">${f}</button>`).join("")}</div><section class="card"><h2>Day ${i+1}</h2><button class="btn primary" onclick="openItForm(${i})">＋新增行程</button></section>${filteredList(list).length?`<div class="timeline">${filteredList(list).map(x=>card(x,list.indexOf(x),i,list)).join("")}</div>`:`<section class="card empty">這個分類還沒有行程 🍂</section>`}`}
 function filteredList(list){return filterType==="全部"?list:list.filter(x=>(x.type||"").includes(filterType))}
-function card(x,i,d,list){const move=i<list.length-1?`<div class="move-line">${esc(x.trans||"🚗 開車")} 約 ${esc(x.moveTime||"未填")} ${x.moveRange?`・${esc(x.moveRange)}`:""}</div>`:"";return `<section class="it-card ${itemClass(x)}" data-idx="${i}" draggable="true" ondragstart="window.dragIndex=${i};this.classList.add('dragging')" ondragend="this.classList.remove('dragging')" ondragover="event.preventDefault();this.classList.add('drop-target')" ondragleave="this.classList.remove('drop-target')" ondrop="dropItem(${d},${i})" ontouchstart="startTouchDrag(event,${d},${i})" ontouchmove="moveTouchDrag(event)" ontouchend="endTouchDrag(event)"><div class="it-head"><div class="it-icon">${typeIcon(x.type)}</div>${x.photo?`<img class="pic" src="${x.photo}">`:""}<div class="it-body"><div class="it-title-row"><div class="it-title">${esc(x.name||"未命名")}</div><div class="right-time">${esc(x.arrive||"")}</div></div><div class="chips"><span class="chip">${esc(x.type||"景點")}</span>${x.stay?`<span class="chip">⏱ ${esc(x.stay)}</span>`:""}</div>${x.memo?`<p class="note">${esc(x.memo)}</p>`:""}<div class="card-actions-row">${x.map?`<a class="btn green" href="${esc(x.map)}" target="_blank">導航</a>`:""}<button class="btn" onclick="editItem(${d},${i})">編輯</button><button class="btn danger" onclick="delItem(${d},${i})">刪除</button><span class="drag-grip">≡</span></div></div></div></section>${move}`}
+function card(x,i,d,list){const move=i<list.length-1?`<div class="move-line">${esc(x.trans||"🚗 開車")} 約 ${esc(x.moveTime||"未填")} ${x.moveRange?`・${esc(x.moveRange)}`:""}</div>`:"";return `<section class="it-card ${itemClass(x)}" data-idx="${i}" draggable="true" ondragstart="window.dragIndex=${i};this.classList.add('dragging')" ondragend="this.classList.remove('dragging')" ondragover="event.preventDefault();this.classList.add('drop-target')" ondragleave="this.classList.remove('drop-target')" ondrop="dropItem(${d},${i})"><div class="it-head"><div class="it-icon">${typeIcon(x.type)}</div>${x.photo?`<img class="pic" src="${x.photo}">`:""}<div class="it-body"><div class="it-title-row"><div class="it-title">${esc(x.name||"未命名")}</div><div class="right-time">${esc(x.arrive||"")}</div></div><div class="chips"><span class="chip category-chip">${esc(x.type||"景點")}</span>${x.stay?`<span class="chip">⏱ ${esc(x.stay)}</span>`:""}</div>${x.memo?`<p class="note">${esc(x.memo)}</p>`:""}<div class="card-actions-row">${x.map?`<a class="btn green" href="${esc(x.map)}" target="_blank">導航</a>`:`<button class="btn green" onclick="alert('尚未填寫導航連結')">導航</button>`}<button class="btn" onclick="editItem(${d},${i})">編輯</button><button class="btn danger" onclick="delItem(${d},${i})">刪除</button><span class="drag-grip" ontouchstart="startTouchDrag(event,${d},${i})" ontouchmove="moveTouchDrag(event)" ontouchend="endTouchDrag(event)">≡</span></div></div></div></section>${move}`}
 function form(x={},action){return `<h2>${x.name?"編輯":"新增"}行程</h2><select id="itType">${types.map(v=>`<option ${v===x.type?"selected":""}>${v}</option>`).join("")}</select><input id="itName" placeholder="名稱" value="${esc(x.name)}"><input id="itMap" placeholder="Google Maps連結" value="${esc(x.map)}"><div class="grid"><input id="itArrive" placeholder="抵達時間" value="${esc(x.arrive)}"><input id="itStay" placeholder="停留時間" value="${esc(x.stay)}"></div><select id="itTrans">${transports.map(v=>`<option ${v===x.trans?"selected":""}>${v}</option>`).join("")}</select><input id="itMove" placeholder="到下一站時間，例如 25分鐘" value="${esc(x.moveTime)}"><input id="itRange" placeholder="移動時段，例如 09:30→09:55" value="${esc(x.moveRange)}"><textarea id="itMemo" placeholder="備註">${esc(x.memo)}</textarea>${x.photo?`<img class="pic" src="${x.photo}">`:""}<input id="itPhoto" type="file" accept="image/*"><button class="btn primary" onclick="${action}">儲存</button>`}
 function openItForm(d){openModal(form({},`addItem(${d})`))}
 function addItem(d){readImage(itPhoto,photo=>{trip().days[d].push({type:itType.value,name:itName.value,map:itMap.value,arrive:itArrive.value,stay:itStay.value,trans:itTrans.value,moveTime:itMove.value,moveRange:itRange.value,memo:itMemo.value,photo});closeModal();render()})}
