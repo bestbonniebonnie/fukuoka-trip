@@ -138,3 +138,19 @@ body{background:linear-gradient(180deg,#dfbf9e 0%,#d5aa82 52%,#c99468 100%)}
 .it-head{align-items:flex-start!important}.it-head>.pic{width:86px;height:86px;object-fit:cover;border-radius:18px;margin:0 10px 0 0;box-shadow:0 8px 16px #6e422724;border:1px solid rgba(111,66,39,.18);flex:0 0 auto}
 .it-title{display:flex;align-items:center;font-weight:900}.move-line{display:inline-block;margin:9px 0 12px 18px!important;background:#f6dfc6!important;border:1px solid #d5a16e;color:#724323!important;border-radius:999px;padding:6px 12px;font-family:"Kaiti TC","KaiTi","BiauKai",serif!important;font-weight:400!important;letter-spacing:.2px;box-shadow:0 4px 10px #6e422710}.card-actions-row .btn.green{background:#6f8f53!important;color:white!important}.chip{background:#efd2b3!important;color:#704327!important;font-weight:600!important}.flight-edit-card:first-of-type{margin-top:6px}
 @media(max-width:430px){.it-head>.pic{width:78px;height:78px;margin-right:8px}.inline-icon{font-size:19px}.move-line{font-size:13px!important;margin-left:14px!important}}
+
+/* v17 harmonious itinerary image layout */
+.it-card{padding:14px 14px 13px!important;min-height:auto!important}
+.it-head{display:block!important}
+.it-top{display:flex;align-items:flex-start;gap:10px;width:100%}
+.it-main{flex:1;min-width:0}
+.it-thumb{width:64px;height:64px;max-height:64px;object-fit:cover;border-radius:16px;box-shadow:0 7px 14px #6e42271d;border:1px solid rgba(111,66,39,.14);background:#fff8ee;flex:0 0 64px;cursor:zoom-in;margin-top:2px}
+.it-title-row{align-items:flex-start!important}.it-title{font-size:18px;line-height:1.25}.chips{margin-top:8px}.chip{font-family:"Kaiti TC","KaiTi","BiauKai",serif!important;font-weight:400!important}
+.note{margin:12px 0 0!important;padding:10px 12px!important;border-radius:14px!important;min-height:0!important}
+.card-actions-row{margin-top:12px!important;display:flex!important;align-items:center!important;gap:8px!important;flex-wrap:wrap!important}
+.it-head>.pic{display:none!important}.scan-choice{display:flex;gap:9px;flex-wrap:wrap;margin:8px 0 10px}.scan-choice .btn{display:inline-flex;align-items:center;justify-content:center;margin:0;cursor:pointer}
+@media(max-width:430px){.it-thumb{width:58px;height:58px;flex-basis:58px;border-radius:15px}.it-title{font-size:17px}.chips{margin-top:7px}.card-actions-row .btn{padding:8px 12px!important}.right-time{font-size:13px!important}}
+
+/* v18 cover picker */
+.cover-pick{display:flex!important;flex-direction:column;align-items:center;justify-content:center;border:1px dashed #d8ad83!important;color:#9a6437!important;background:#fff4e4!important;font-size:19px;line-height:1;gap:2px;padding:0;font-family:-apple-system,BlinkMacSystemFont,"PingFang TC",sans-serif;cursor:pointer}
+.cover-pick small{font-size:10px;font-weight:700;letter-spacing:.2px}.cover-empty{border:1px dashed var(--line);border-radius:16px;padding:20px;text-align:center;color:#987053;background:#fff8ef}.cover-current{margin:8px 0}

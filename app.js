@@ -80,7 +80,27 @@ function day(i){const t=trip(),list=t.days[i],meta=t.dayMeta[i]||{weather:"",out
 function editDayMeta(i,key){const meta=trip().dayMeta[i]||(trip().dayMeta[i]={weather:"",outfit:""});openModal(`<h2>${key==='weather'?'編輯天氣':'編輯穿著'}</h2><textarea id="metaText" placeholder="${key==='weather'?'例如：18度陰天':'例如：薄外套、晚上加件外套'}">${esc(meta[key]||"")}</textarea><button class="btn primary" onclick="saveDayMeta(${i},'${key}')">儲存</button><button class="btn" onclick="closeModal()">取消</button>`)}
 function saveDayMeta(i,key){const meta=trip().dayMeta[i]||(trip().dayMeta[i]={weather:"",outfit:""});meta[key]=metaText.value;closeModal();render()}
 function filteredList(list){return filterType==="全部"?list:list.filter(x=>(x.type||"").includes(filterType))}
-function card(x,i,d,list){const move=(i<list.length-1&&x.moveTime)?`<div class="move-line">${esc(x.trans||"🚗 開車")} 約 ${esc(x.moveTime)}</div>`:"";return `<section class="it-card ${itemClass(x)}" data-idx="${i}" draggable="true" ondragstart="window.dragIndex=${i};this.classList.add('dragging')" ondragend="this.classList.remove('dragging')" ondragover="event.preventDefault();this.classList.add('drop-target')" ondragleave="this.classList.remove('drop-target')" ondrop="dropItem(${d},${i})"><div class="it-head">${x.photo?`<img class="pic" src="${x.photo}" ${imgAttrs(x.photo)}>`:""}<div class="it-body"><div class="it-title-row"><div class="it-title"><span class="inline-icon">${typeIcon(x.type)}</span>${esc(x.name||"未命名")}</div><div class="right-time">${esc(fmtTime(x.arrive)||"")}</div></div><div class="chips">${x.stay?`<span class="chip">⏱ ${esc(x.stay)}</span>`:""}${x.rating?`<span class="chip">⭐ ${esc(x.rating)}</span>`:""}</div>${x.memo?`<p class="note">${esc(x.memo)}</p>`:""}<div class="card-actions-row">${x.map?`<a class="btn green" href="${esc(x.map)}" target="_blank">導航</a>`:`<button class="btn green" onclick="alert('尚未填寫導航連結')">導航</button>`}<button class="btn" onclick="editItem(${d},${i})">編輯</button><button class="btn danger" onclick="delItem(${d},${i})">刪除</button><span class="drag-grip" ontouchstart="startTouchDrag(event,${d},${i})" ontouchmove="moveTouchDrag(event)" ontouchend="endTouchDrag(event)">≡</span></div></div></div></section>${move}`}
+function card(x,i,d,list){const move=(i<list.length-1&&x.moveTime)?`<div class="move-line">${esc(x.trans||"🚗 開車")} 約 ${esc(x.moveTime)}</div>`:"";const cover=x.photo?`<img class="it-thumb" src="${x.photo}" ${imgAttrs(x.photo)}>`:`<button class="it-thumb cover-pick" onclick="openCoverPicker(${d},${i})">🖼<small>封面</small></button>`;return `<section class="it-card ${itemClass(x)}" data-idx="${i}" draggable="true" ondragstart="window.dragIndex=${i};this.classList.add('dragging')" ondragend="this.classList.remove('dragging')" ondragover="event.preventDefault();this.classList.add('drop-target')" ondragleave="this.classList.remove('drop-target')" ondrop="dropItem(${d},${i})"><div class="it-body"><div class="it-top"><div class="it-main"><div class="it-title-row"><div class="it-title"><span class="inline-icon">${typeIcon(x.type)}</span>${esc(x.name||"未命名")}</div><div class="right-time">${esc(fmtTime(x.arrive)||"")}</div></div><div class="chips">${x.stay?`<span class="chip">⏱ ${esc(x.stay)}</span>`:""}${x.rating?`<span class="chip">⭐ ${esc(x.rating)}</span>`:""}</div></div>${cover}</div>${x.memo?`<p class="note">${esc(x.memo)}</p>`:""}<div class="card-actions-row">${x.map?`<a class="btn green" href="${esc(x.map)}" target="_blank">導航</a>`:`<button class="btn green" onclick="alert('尚未填寫導航連結')">導航</button>`}<button class="btn" onclick="editItem(${d},${i})">編輯</button><button class="btn danger" onclick="delItem(${d},${i})">刪除</button><span class="drag-grip" ontouchstart="startTouchDrag(event,${d},${i})" ontouchmove="moveTouchDrag(event)" ontouchend="endTouchDrag(event)">≡</span></div></div></section>${move}`}
+
+function openCoverPicker(d,i){
+  const x=trip().days[d][i];
+  const q=encodeURIComponent((x.name||"") + " " + ((x.type||"").replace(/[🏯🏨🍜🛍☕]/g,"")));
+  openModal(`<h2>設定行程封面</h2><p class="small">目前純網頁版不能直接抓 Google Maps 封面，但可以貼圖片網址，或從相簿上傳。圖片會固定在右上小縮圖，不會把卡片撐高。</p><div class="cover-current">${x.photo?`<img class="receipt-preview" src="${x.photo}" ${imgAttrs(x.photo)}>`:`<div class="cover-empty">尚未設定圖片</div>`}</div><input id="coverUrl" placeholder="貼上圖片網址：https://...jpg"><input id="coverFile" type="file" accept="image/*" onchange="previewFile(this,'coverPreview')"><div id="coverPreview"></div><div class="scan-choice"><button class="btn primary" onclick="saveCoverFromUrl(${d},${i})">使用圖片網址</button><button class="btn primary" onclick="saveCoverFromFile(${d},${i})">使用上傳圖片</button><a class="btn" target="_blank" href="https://www.google.com/search?tbm=isch&q=${q}">搜尋圖片</a></div><button class="btn" onclick="closeModal()">取消</button>`)
+}
+function saveCoverFromUrl(d,i){
+  const url=(coverUrl.value||"").trim();
+  if(!url)return alert("請先貼上圖片網址");
+  trip().days[d][i].photo=url;
+  closeModal();render();
+}
+function saveCoverFromFile(d,i){
+  readImage(coverFile,photo=>{
+    if(!photo)return alert("請先選擇圖片");
+    trip().days[d][i].photo=photo;
+    closeModal();render();
+  })
+}
+
 function form(x={},action){return `<h2>${x.name?"編輯":"新增"}行程</h2><select id="itType">${types.map(v=>`<option ${v===x.type?"selected":""}>${v}</option>`).join("")}</select><input id="itName" placeholder="名稱" value="${esc(x.name)}"><input id="itMap" placeholder="Google Maps連結" value="${esc(x.map)}"><div class="grid"><input id="itArrive" placeholder="抵達時間，例如 10:25" value="${esc(fmtTime(x.arrive))}"><input id="itStay" placeholder="停留時間" value="${esc(x.stay)}"></div><div class="grid"><select id="itTrans">${transports.map(v=>`<option ${v===x.trans?"selected":""}>${v}</option>`).join("")}</select><input id="itMoveTime" placeholder="交通所需時間，例如：開車 15 分鐘" value="${esc(x.moveTime)}"></div><select id="itRating"><option value="" ${!x.rating?"selected":""}>推薦程度（選填）</option><option value="5 必去" ${x.rating==="5 必去"?"selected":""}>⭐⭐⭐⭐⭐ 必去</option><option value="4 推薦" ${x.rating==="4 推薦"?"selected":""}>⭐⭐⭐⭐ 推薦</option><option value="3 普通" ${x.rating==="3 普通"?"selected":""}>⭐⭐⭐ 普通</option><option value="1 不用再來" ${x.rating==="1 不用再來"?"selected":""}>⭐ 不用再來</option></select><textarea id="itMemo" placeholder="備註">${esc(x.memo)}</textarea>${x.photo?`<img class="pic" src="${x.photo}" ${imgAttrs(x.photo)}>`:""}<input id="itPhoto" type="file" accept="image/*"><button class="btn primary" onclick="${action}">儲存</button>`}
 function openItForm(d){openModal(form({},`addItem(${d})`))}
 function addItem(d){readImage(itPhoto,photo=>{trip().days[d].push({type:itType.value,name:itName.value,map:itMap.value,arrive:fmtTime(itArrive.value),stay:itStay.value,trans:itTrans.value,moveTime:itMoveTime.value,memo:itMemo.value,photo,rating:itRating.value,done:false});closeModal();render()})}
@@ -101,10 +121,13 @@ function previewFile(input, targetId){
   box.innerHTML=`<img class="receipt-preview" src="${url}"><p class="small">已上傳圖片，可先確認是否清楚。</p>`;
 }
 function receiptScan(){
-  openModal(`<h2>收據明細</h2><p class="small">請拍照或上傳收據，圖片會先預覽，再進入明細確認。靜態網頁目前無法真正離線 AI 辨識日文收據，但可以用同一個確認流程快速輸入。</p><input id="scanReceipt" type="file" accept="image/*" onchange="previewFile(this,'scanPreview')"><div id="scanPreview"></div><button class="btn primary" onclick="openReceiptConfirm()">下一步：確認明細</button><button class="btn" onclick="closeModal()">取消</button>`)
+  openModal(`<h2>收據明細</h2><p class="small">可拍照或從相簿上傳收據。圖片會先預覽，再進入明細確認；目前先提供確認輸入流程，真正 AI OCR 可在下一階段串接。</p><div class="scan-choice"><label class="btn primary">📷 拍照<input id="scanCamera" type="file" accept="image/*" capture="environment" onchange="previewFile(this,'scanPreview')" hidden></label><label class="btn">🖼 從相簿上傳<input id="scanAlbum" type="file" accept="image/*" onchange="previewFile(this,'scanPreview')" hidden></label></div><div id="scanPreview"></div><button class="btn primary" onclick="openReceiptConfirm()">下一步：確認明細</button><button class="btn" onclick="closeModal()">取消</button>`)
 }
+function selectedScanInput(){return (document.getElementById('scanAlbum')&&scanAlbum.files&&scanAlbum.files[0])?scanAlbum:((document.getElementById('scanCamera')&&scanCamera.files&&scanCamera.files[0])?scanCamera:null)}
 function openReceiptConfirm(){
-  readImage(scanReceipt,receipt=>{
+  const input=selectedScanInput();
+  if(!input){alert('請先拍照或從相簿選擇收據照片');return}
+  readImage(input,receipt=>{
     modalBody.innerHTML=`<h2>確認收據內容</h2><p class="small">請輸入或修改品項與金額，確認後會自動加入記帳。</p><div class="receipt-confirm-card"><input id="rcStore" placeholder="店名／商店"><input id="rcDate" type="date"><h3>購買明細</h3><div id="receiptLines">${receiptLineHtml(1)}${receiptLineHtml(2)}</div><button class="btn" onclick="addReceiptLine()">＋新增品項</button></div>${receipt?`<img class="receipt-preview" src="${receipt}" ${imgAttrs(receipt)}>`:""}<button class="btn primary" onclick="saveReceiptExpense('${receipt}')">確認儲存</button><button class="btn" onclick="closeModal()">取消</button>`;
   })
 }
