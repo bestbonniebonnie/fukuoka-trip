@@ -154,3 +154,6 @@ body{background:linear-gradient(180deg,#dfbf9e 0%,#d5aa82 52%,#c99468 100%)}
 /* v18 cover picker */
 .cover-pick{display:flex!important;flex-direction:column;align-items:center;justify-content:center;border:1px dashed #d8ad83!important;color:#9a6437!important;background:#fff4e4!important;font-size:19px;line-height:1;gap:2px;padding:0;font-family:-apple-system,BlinkMacSystemFont,"PingFang TC",sans-serif;cursor:pointer}
 .cover-pick small{font-size:10px;font-weight:700;letter-spacing:.2px}.cover-empty{border:1px dashed var(--line);border-radius:16px;padding:20px;text-align:center;color:#987053;background:#fff8ef}.cover-current{margin:8px 0}
+
+/* v19 formal-use refinements */
+.split-total .money{font-size:20px;color:#5b321d}.split-card p{margin:7px 0}.ocr-raw{background:#fff8ef;border:1px solid var(--line);border-radius:16px;padding:10px;margin:10px 0}.ocr-raw summary{font-weight:800;color:#7d5435;cursor:pointer}.ocr-raw textarea{min-height:120px;background:#fffdf8}.receipt-confirm-card h3{margin-top:12px}.scan-choice+.small,#ocrStatus{margin-top:10px;color:#7b5438}.receipt-line .rAmount{text-align:right}

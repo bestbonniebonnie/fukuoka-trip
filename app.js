@@ -1,6 +1,6 @@
 
-const STORE_KEY="bearTravelPlanner_v15";
-const OLD_KEYS=["bearTravelPlanner_v13","bearTravelPlanner_v12","bearTravelPlanner_v11","bearTravelPlanner_v10","bearTravelPlanner_v5","bearTravelPlanner_v3","bearTravelPlanner_v2_full","bearTravelPlanner_v1_full","bearTravelPlannerV4","bearMultiTripV3","bearMultiTrip"];
+const STORE_KEY="bearTravelPlanner_v19";
+const OLD_KEYS=["bearTravelPlanner_v18","bearTravelPlanner_v17","bearTravelPlanner_v16","bearTravelPlanner_v15","bearTravelPlanner_v14","bearTravelPlanner_v13","bearTravelPlanner_v12","bearTravelPlanner_v11","bearTravelPlanner_v10","bearTravelPlanner_v5","bearTravelPlanner_v3","bearTravelPlanner_v2_full","bearTravelPlanner_v1_full","bearTravelPlannerV4","bearMultiTripV3","bearMultiTrip"];
 const types=["🏯 景點","🏨 住宿","🍜 美食","🛍 購物","☕ 咖啡廳"];
 const transports=["🚗 開車","🚶‍♀️ 走路","🚕 計程車","🚆 大眾交通","🚌 巴士"];
 const currencies=["JPY","TWD","KRW","THB","USD","EUR"];
@@ -41,6 +41,13 @@ function readImage(input,cb){
   r.readAsDataURL(f);
 }
 function toTWD(a,c){return Math.round(Number(a||0)*(trip().rates[c]||1))}
+function moneyText(a,c){return `${Number(a||0).toLocaleString()} ${c||trip().mainCurrency||"JPY"}｜約 NT$ ${toTWD(a,c||trip().mainCurrency||"JPY").toLocaleString()}`}
+function perPersonAmount(x){return (Number(x.amount||0)/(x.people?.length||1))}
+function parseMoneyLike(s){
+  const cleaned=String(s||"").replace(/[,，]/g,"");
+  const m=cleaned.match(/(?:¥|￥|NT\$?|TWD|JPY)?\s*([0-9]+(?:\.[0-9]+)?)/i);
+  return m?Number(m[1]):0;
+}
 function openModal(h){modalBody.innerHTML=h;modal.classList.remove("hidden")}function closeModal(){modal.classList.add("hidden");modalBody.innerHTML=""}
 function previewImage(src){if(!src)return;openModal(`<h2>圖片預覽</h2><img class="full-preview" src="${src}"><p class="small">點空白處可關閉。</p>`)}
 function imgAttrs(src){return `onclick="previewImage('${src}')" oncontextmenu="event.preventDefault();previewImage('${src}');return false"`}
@@ -121,14 +128,52 @@ function previewFile(input, targetId){
   box.innerHTML=`<img class="receipt-preview" src="${url}"><p class="small">已上傳圖片，可先確認是否清楚。</p>`;
 }
 function receiptScan(){
-  openModal(`<h2>收據明細</h2><p class="small">可拍照或從相簿上傳收據。圖片會先預覽，再進入明細確認；目前先提供確認輸入流程，真正 AI OCR 可在下一階段串接。</p><div class="scan-choice"><label class="btn primary">📷 拍照<input id="scanCamera" type="file" accept="image/*" capture="environment" onchange="previewFile(this,'scanPreview')" hidden></label><label class="btn">🖼 從相簿上傳<input id="scanAlbum" type="file" accept="image/*" onchange="previewFile(this,'scanPreview')" hidden></label></div><div id="scanPreview"></div><button class="btn primary" onclick="openReceiptConfirm()">下一步：確認明細</button><button class="btn" onclick="closeModal()">取消</button>`)
+  openModal(`<h2>掃描收據</h2><p class="small">可拍照或從相簿上傳。按「AI辨識」會嘗試自動讀取文字；若辨識不完整，也可以手動確認明細。</p><div class="scan-choice"><label class="btn primary">📷 拍照<input id="scanCamera" type="file" accept="image/*" capture="environment" onchange="previewFile(this,'scanPreview')" hidden></label><label class="btn">🖼 從相簿上傳<input id="scanAlbum" type="file" accept="image/*" onchange="previewFile(this,'scanPreview')" hidden></label></div><div id="scanPreview"></div><button class="btn primary" onclick="runReceiptOCR()">✨ AI辨識明細</button><button class="btn" onclick="openReceiptConfirm()">手動確認明細</button><button class="btn" onclick="closeModal()">取消</button><div id="ocrStatus" class="small"></div>`)
 }
 function selectedScanInput(){return (document.getElementById('scanAlbum')&&scanAlbum.files&&scanAlbum.files[0])?scanAlbum:((document.getElementById('scanCamera')&&scanCamera.files&&scanCamera.files[0])?scanCamera:null)}
-function openReceiptConfirm(){
+function loadTesseract(){
+  return new Promise((resolve,reject)=>{
+    if(window.Tesseract)return resolve(window.Tesseract);
+    const s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+    s.onload=()=>resolve(window.Tesseract);
+    s.onerror=()=>reject(new Error('OCR 載入失敗'));
+    document.head.appendChild(s);
+  })
+}
+function parseReceiptLines(text){
+  const rows=[];
+  String(text||'').split(/\n+/).map(x=>x.trim()).filter(Boolean).forEach(line=>{
+    const nums=[...line.replace(/[,，]/g,'').matchAll(/(?:¥|￥|NT\$?|TWD|JPY)?\s*([0-9]{2,6})(?![0-9])/gi)].map(m=>Number(m[1]));
+    if(!nums.length)return;
+    const amount=nums[nums.length-1];
+    let name=line.replace(/(?:¥|￥|NT\$?|TWD|JPY)?\s*[0-9]{2,6}(?![0-9])/gi,'').replace(/[＊*×xX]\s*\d+/g,'').trim();
+    name=name.replace(/^[-–—・\s]+|[-–—・\s]+$/g,'');
+    if(amount>0 && amount<100000 && name && !/total|合計|小計|現計|稅|税|找零|釣銭|現金|credit|visa/i.test(name)) rows.push({name,amount});
+  });
+  return rows.slice(0,24);
+}
+function runReceiptOCR(){
+  const input=selectedScanInput();
+  if(!input){alert('請先拍照或從相簿選擇收據照片');return}
+  const st=document.getElementById('ocrStatus');
+  if(st)st.textContent='AI辨識中…第一次使用可能需要等一下';
+  loadTesseract().then(T=>T.recognize(input.files[0],'eng+jpn+chi_tra',{logger:m=>{if(st&&m.status)st.textContent=`AI辨識中… ${m.status} ${m.progress?Math.round(m.progress*100)+'%':''}`}})).then(res=>{
+    const text=res?.data?.text||'';
+    const rows=parseReceiptLines(text);
+    openReceiptConfirm(rows,text);
+  }).catch(err=>{
+    if(st)st.textContent='AI辨識暫時無法使用，已切換成手動確認。';
+    alert('AI辨識暫時無法使用，請先用手動確認明細。');
+    openReceiptConfirm();
+  })
+}
+function openReceiptConfirm(rows=[],ocrText=''){
   const input=selectedScanInput();
   if(!input){alert('請先拍照或從相簿選擇收據照片');return}
   readImage(input,receipt=>{
-    modalBody.innerHTML=`<h2>確認收據內容</h2><p class="small">請輸入或修改品項與金額，確認後會自動加入記帳。</p><div class="receipt-confirm-card"><input id="rcStore" placeholder="店名／商店"><input id="rcDate" type="date"><h3>購買明細</h3><div id="receiptLines">${receiptLineHtml(1)}${receiptLineHtml(2)}</div><button class="btn" onclick="addReceiptLine()">＋新增品項</button></div>${receipt?`<img class="receipt-preview" src="${receipt}" ${imgAttrs(receipt)}>`:""}<button class="btn primary" onclick="saveReceiptExpense('${receipt}')">確認儲存</button><button class="btn" onclick="closeModal()">取消</button>`;
+    const lineHtml=(rows&&rows.length?rows:[{},{}]).map((r,i)=>receiptLineHtml(i+1,r.name||'',r.amount||'')).join('');
+    modalBody.innerHTML=`<h2>確認收據內容</h2><p class="small">請確認或修改品項與金額，按儲存後會自動加入記帳。</p><div class="receipt-confirm-card"><input id="rcStore" placeholder="店名／商店"><input id="rcDate" type="date"><h3>購買明細</h3><div id="receiptLines">${lineHtml}</div><button class="btn" onclick="addReceiptLine()">＋新增品項</button></div>${ocrText?`<details class="ocr-raw"><summary>查看辨識原文</summary><textarea readonly>${esc(ocrText)}</textarea></details>`:''}${receipt?`<img class="receipt-preview" src="${receipt}" ${imgAttrs(receipt)}>`:""}<button class="btn primary" onclick="saveReceiptExpense('${receipt}')">確認儲存</button><button class="btn" onclick="closeModal()">取消</button>`;
   })
 }
 function mockRecognizeReceipt(){openReceiptConfirm()}
@@ -151,10 +196,18 @@ function addExpense(){const c=trip().mainCurrency||"JPY";readImage(exReceipt,rec
 function editExpense(i){const x=trip().expenses[i],c=x.cur||trip().mainCurrency||"JPY";openModal(`<h2>編輯記帳</h2><input id="eeName" value="${esc(x.name)}" placeholder="項目名稱"><input id="eeAmount" type="number" value="${esc(x.amount)}" placeholder="金額"><select id="eeCur">${currencies.map(v=>`<option value="${v}" ${v===c?'selected':''}>${v}</option>`).join('')}</select><textarea id="eeMemo" placeholder="備註">${esc(x.memo||"")}</textarea>${x.receipt?`<img class="receipt-preview" src="${x.receipt}" ${imgAttrs(x.receipt)}>`:""}<input id="eeReceipt" type="file" accept="image/*" onchange="previewFile(this,'eePreview')"><div id="eePreview"></div><button class="btn primary" onclick="saveExpenseEdit(${i})">儲存</button><button class="btn" onclick="closeModal()">取消</button>`)}
 function saveExpenseEdit(i){const x=trip().expenses[i];readImage(eeReceipt,receipt=>{Object.assign(x,{name:eeName.value,amount:eeAmount.value,cur:eeCur.value,memo:eeMemo.value});if(receipt)x.receipt=receipt;closeModal();render()})}
 function delExpense(i){if(confirm("刪除這筆記帳？")){trip().expenses.splice(i,1);render()}}
-function splits(){const t=trip(),c=t.mainCurrency||"JPY",tot={};t.members.forEach(m=>tot[m]=0);t.splits.forEach(x=>x.people.forEach(p=>{if((x.cur||c)===c)tot[p]+=Number(x.amount||0)/x.people.length}));return `${rateBox()}<section class="card"><h2>👨‍👩‍👧‍👦 分攤</h2><div class="grid">${t.members.map(m=>`<div class="card"><b>${esc(m)}</b><div class="money">${Math.round(tot[m]||0)} ${c}</div></div>`).join("")}</div><input id="spName" placeholder="項目"><input id="spAmount" type="number" placeholder="總金額"><input id="spPhoto" type="file" accept="image/*" onchange="previewFile(this,'splitPreview')"><div id="splitPreview"></div><div class="people-box">${t.members.map(m=>`<label class="tag"><input type="checkbox" name="sp" value="${esc(m)}"> ${esc(m)}</label>`).join("")}</div><button class="btn primary" onclick="addSplit()">新增</button></section>${t.splits.map((x,i)=>`<section class="card">${x.photo?`<img class="pic expense-thumb" src="${x.photo}" ${imgAttrs(x.photo)}>`:""}<h3>${esc(x.name)}</h3><p>${x.amount} ${x.cur||c}｜${x.people.join("、")}</p><p>每人：${Math.round(Number(x.amount||0)/x.people.length)} ${x.cur||c}</p><button class="btn" onclick="editSplit(${i})">編輯</button><button class="btn danger" onclick="delSplit(${i})">刪除</button></section>`).join("")}`}
-function addSplit(){const people=[...document.querySelectorAll("input[name=sp]:checked")].map(x=>x.value),c=trip().mainCurrency||"JPY";if(!people.length)return alert("請勾選成員");readImage(spPhoto,photo=>{trip().splits.push({name:spName.value,amount:spAmount.value,cur:c,people,photo});render()})}
-function editSplit(i){const x=trip().splits[i];openModal(`<h2>編輯分攤</h2><input id="seName" value="${esc(x.name)}"><input id="seAmount" type="number" value="${esc(x.amount)}">${x.photo?`<img class="receipt-preview" src="${x.photo}" ${imgAttrs(x.photo)}>`:""}<input id="sePhoto" type="file" accept="image/*" onchange="previewFile(this,'sePreview')"><div id="sePreview"></div><div class="people-box">${trip().members.map(m=>`<label class="tag"><input type="checkbox" name="sep" value="${esc(m)}" ${x.people.includes(m)?'checked':''}> ${esc(m)}</label>`).join('')}</div><button class="btn primary" onclick="saveSplitEdit(${i})">儲存</button><button class="btn" onclick="closeModal()">取消</button>`)}
-function saveSplitEdit(i){const people=[...document.querySelectorAll("input[name=sep]:checked")].map(x=>x.value);if(!people.length)return alert("請勾選成員");readImage(sePhoto,photo=>{Object.assign(trip().splits[i],{name:seName.value,amount:seAmount.value,people});if(photo)trip().splits[i].photo=photo;closeModal();render()})}
+function splits(){
+  const t=trip(),c=t.mainCurrency||"JPY",tot={};
+  t.members.forEach(m=>tot[m]={native:0,twd:0});
+  t.splits.forEach(x=>{
+    const cur=x.cur||c, each=perPersonAmount(x), eachTwd=toTWD(each,cur);
+    (x.people||[]).forEach(p=>{if(!tot[p])tot[p]={native:0,twd:0}; if(cur===c)tot[p].native+=each; tot[p].twd+=eachTwd;});
+  });
+  return `${rateBox()}<section class="card"><h2>👨‍👩‍👧‍👦 分攤</h2><div class="grid">${t.members.map(m=>`<div class="card split-total"><b>${esc(m)}</b><div class="money">NT$ ${Math.round(tot[m]?.twd||0).toLocaleString()}</div><p class="small">${c} 約 ${Math.round(tot[m]?.native||0).toLocaleString()}</p></div>`).join("")}</div><input id="spName" placeholder="項目"><div class="grid"><input id="spAmount" type="number" placeholder="總金額"><select id="spCur">${currencies.map(v=>`<option value="${v}" ${v===c?'selected':''}>${v}</option>`).join('')}</select></div><input id="spPhoto" type="file" accept="image/*" onchange="previewFile(this,'splitPreview')"><div id="splitPreview"></div><div class="people-box">${t.members.map(m=>`<label class="tag"><input type="checkbox" name="sp" value="${esc(m)}"> ${esc(m)}</label>`).join("")}</div><button class="btn primary" onclick="addSplit()">新增</button></section>${t.splits.map((x,i)=>{const cur=x.cur||c, each=perPersonAmount(x);return `<section class="card split-card">${x.photo?`<img class="pic expense-thumb" src="${x.photo}" ${imgAttrs(x.photo)}>`:""}<h3>${esc(x.name)}</h3><p>${moneyText(x.amount,cur)}</p><p>分攤：${(x.people||[]).join("、")}</p><p>每人：${Math.round(each).toLocaleString()} ${cur}｜約 NT$ ${toTWD(each,cur).toLocaleString()}</p><button class="btn" onclick="editSplit(${i})">編輯</button><button class="btn danger" onclick="delSplit(${i})">刪除</button></section>`}).join("")}`
+}
+function addSplit(){const people=[...document.querySelectorAll("input[name=sp]:checked")].map(x=>x.value),c=spCur.value||trip().mainCurrency||"JPY";if(!people.length)return alert("請勾選成員");readImage(spPhoto,photo=>{trip().splits.push({name:spName.value,amount:spAmount.value,cur:c,people,photo});render()})}
+function editSplit(i){const x=trip().splits[i],cur=x.cur||trip().mainCurrency||"JPY";openModal(`<h2>編輯分攤</h2><input id="seName" value="${esc(x.name)}"><div class="grid"><input id="seAmount" type="number" value="${esc(x.amount)}"><select id="seCur">${currencies.map(v=>`<option value="${v}" ${v===cur?'selected':''}>${v}</option>`).join('')}</select></div>${x.photo?`<img class="receipt-preview" src="${x.photo}" ${imgAttrs(x.photo)}>`:""}<input id="sePhoto" type="file" accept="image/*" onchange="previewFile(this,'sePreview')"><div id="sePreview"></div><div class="people-box">${trip().members.map(m=>`<label class="tag"><input type="checkbox" name="sep" value="${esc(m)}" ${x.people.includes(m)?'checked':''}> ${esc(m)}</label>`).join('')}</div><button class="btn primary" onclick="saveSplitEdit(${i})">儲存</button><button class="btn" onclick="closeModal()">取消</button>`)}
+function saveSplitEdit(i){const people=[...document.querySelectorAll("input[name=sep]:checked")].map(x=>x.value);if(!people.length)return alert("請勾選成員");readImage(sePhoto,photo=>{Object.assign(trip().splits[i],{name:seName.value,amount:seAmount.value,cur:seCur.value,people});if(photo)trip().splits[i].photo=photo;closeModal();render()})}
 function delSplit(i){if(confirm("刪除這筆分攤？")){trip().splits.splice(i,1);render()}}
 function buy(){const t=trip(),g={};t.buy.forEach((x,i)=>{const a=x.area||"未分類";if(!g[a])g[a]=[];g[a].push({...x,i})});return `<section class="card"><h2>🛍 必買</h2><input id="buyName" placeholder="商品名稱"><input id="buyArea" placeholder="商店／地區"><textarea id="buyMemo" placeholder="備註"></textarea><input id="buyPic" type="file" accept="image/*" onchange="previewFile(this,'buyPreview')"><div id="buyPreview"></div><button class="btn primary" onclick="addBuy()">新增</button></section>${Object.keys(g).sort().map(a=>`<section class="buy-card"><h3 class="area-title">${esc(a)}</h3><div class="buy-grid">${g[a].map(x=>`<div class="buy-item ${x.done?'done':''}">${x.pic?`<img class="buy-pic" src="${x.pic}" ${imgAttrs(x.pic)}>`:`<div class="buy-pic placeholder">🛍</div>`}<label><input type="checkbox" ${x.done?'checked':''} onchange="toggleBuy(${x.i})"> <b>${esc(x.name)}</b></label>${x.memo?`<small>${esc(x.memo)}</small>`:""}<div class="mini-actions"><button class="delete-mini edit" onclick="editBuy(${x.i})">編輯</button><button class="delete-mini" onclick="trip().buy.splice(${x.i},1);render()">刪除</button></div></div>`).join("")}</div></section>`).join("")}`}
 function toggleBuy(i){trip().buy[i].done=!trip().buy[i].done;render()}
@@ -169,8 +222,8 @@ function downloadText(name,text,type='application/json'){
   a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
-function exportTrip(){const t=trip();downloadText(`${safeName(t.name)}.beartravel`,JSON.stringify({version:15,exportedAt:new Date().toISOString(),trip:t},null,2))}
-function exportAll(){downloadText(`BearTravel_全部備份_${new Date().toISOString().slice(0,10)}.beartravel`,JSON.stringify({version:15,exportedAt:new Date().toISOString(),state},null,2))}
+function exportTrip(){const t=trip();downloadText(`${safeName(t.name)}.beartravel`,JSON.stringify({version:19,exportedAt:new Date().toISOString(),trip:t},null,2))}
+function exportAll(){downloadText(`BearTravel_全部備份_${new Date().toISOString().slice(0,10)}.beartravel`,JSON.stringify({version:19,exportedAt:new Date().toISOString(),state},null,2))}
 function importFile(input,mode){const f=input.files&&input.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const data=JSON.parse(r.result);if(data.state){state=data.state}else if(data.trip){const t=data.trip;t.id=Date.now()+Math.random();norm(t);state.trips.push(t);currentTripId=t.id}else if(data.trips){state=data}else{throw new Error('format')}state.trips.forEach(norm);currentTripId=state.trips[0]?.id||null;currentTab=0;save();closeModal();render();alert('匯入完成')}catch(e){alert('檔案格式不正確')}};r.readAsText(f)}
 function openImport(){openModal(`<h2>匯入／還原</h2><p class="small">可匯入 .beartravel 或 JSON 備份檔。匯入單趟旅程會加入列表；匯入完整備份會覆蓋目前資料。</p><input type="file" accept=".beartravel,.json,application/json" onchange="importFile(this)"><button class="btn" onclick="closeModal()">取消</button>`)}
 function duplicateTrip(){const t=JSON.parse(JSON.stringify(trip()));t.id=Date.now()+Math.random();t.name=t.name+' 複製';norm(t);state.trips.push(t);currentTripId=t.id;currentTab=0;render()}
