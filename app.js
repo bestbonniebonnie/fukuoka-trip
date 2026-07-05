@@ -1,6 +1,6 @@
 
-const STORE_KEY="bearTravelPlanner_v19";
-const OLD_KEYS=["bearTravelPlanner_v18","bearTravelPlanner_v17","bearTravelPlanner_v16","bearTravelPlanner_v15","bearTravelPlanner_v14","bearTravelPlanner_v13","bearTravelPlanner_v12","bearTravelPlanner_v11","bearTravelPlanner_v10","bearTravelPlanner_v5","bearTravelPlanner_v3","bearTravelPlanner_v2_full","bearTravelPlanner_v1_full","bearTravelPlannerV4","bearMultiTripV3","bearMultiTrip"];
+const STORE_KEY="bearTravelPlanner_v21";
+const OLD_KEYS=["bearTravelPlanner_v20","bearTravelPlanner_v19","bearTravelPlanner_v18","bearTravelPlanner_v17","bearTravelPlanner_v16","bearTravelPlanner_v15","bearTravelPlanner_v14","bearTravelPlanner_v13","bearTravelPlanner_v12","bearTravelPlanner_v11","bearTravelPlanner_v10","bearTravelPlanner_v5","bearTravelPlanner_v3","bearTravelPlanner_v2_full","bearTravelPlanner_v1_full","bearTravelPlannerV4","bearMultiTripV3","bearMultiTrip"];
 const types=["🏯 景點","🏨 住宿","🍜 美食","🛍 購物","☕ 咖啡廳"];
 const transports=["🚗 開車","🚶‍♀️ 走路","🚕 計程車","🚆 大眾交通","🚌 巴士"];
 const currencies=["JPY","TWD","KRW","THB","USD","EUR"];
@@ -41,7 +41,30 @@ function readImage(input,cb){
   r.readAsDataURL(f);
 }
 function toTWD(a,c){return Math.round(Number(a||0)*(trip().rates[c]||1))}
-function moneyText(a,c){return `${Number(a||0).toLocaleString()} ${c||trip().mainCurrency||"JPY"}｜約 NT$ ${toTWD(a,c||trip().mainCurrency||"JPY").toLocaleString()}`}
+function toTripCurrency(a,c){
+  const t=trip(), main=t.mainCurrency||"JPY", cur=c||main;
+  const n=Number(a||0);
+  if(cur===main)return n;
+  const twd=n*(t.rates[cur]||1);
+  const mainRate=t.rates[main]||1;
+  return mainRate? twd/mainRate : n;
+}
+function moneyTextTrip(a,c){
+  const t=trip(), main=t.mainCurrency||"JPY", cur=c||main;
+  const mainAmount=toTripCurrency(a,cur);
+  const twd=toTWD(a,cur);
+  const original=cur!==main?`<p class="small muted">原始金額：${fmtMoney(a,cur)}</p>`:"";
+  return `<div class="money">${fmtMoney(mainAmount,main)}</div><p class="small">約 NT$ ${Math.round(twd).toLocaleString()}</p>${original}`;
+}
+function fmtMoney(a,c){
+  const cur=c||trip().mainCurrency||"JPY", n=Number(a||0);
+  const symbol={JPY:"¥",TWD:"NT$",KRW:"₩",THB:"฿",USD:"US$",EUR:"€"}[cur]||cur+" ";
+  return `${symbol}${Math.round(n).toLocaleString()}`;
+}
+function moneyText(a,c){
+  const cur=c||trip().mainCurrency||"JPY";
+  return `<div class="money">${fmtMoney(a,cur)}</div><p class="small">約 NT$ ${toTWD(a,cur).toLocaleString()}</p>`;
+}
 function perPersonAmount(x){return (Number(x.amount||0)/(x.people?.length||1))}
 function parseMoneyLike(s){
   const cleaned=String(s||"").replace(/[,，]/g,"");
@@ -119,14 +142,7 @@ function dropItem(d,i){const arr=trip().days[d];if(window.dragIndex==null)return
 function moveTo(d,from,to){to=Number(to);if(from===to)return;const arr=trip().days[d],it=arr.splice(from,1)[0];arr.splice(to,0,it);render()}
 
 /* money */
-function rateBox(){const t=trip(),c=t.mainCurrency||"JPY";return `<section class="card"><h3>匯率設定</h3><label>${c}<input type="number" step="0.001" value="${t.rates[c]}" onchange="trip().rates['${c}']=Number(this.value);render()"></label></section>`}
-function previewFile(input, targetId){
-  const box=document.getElementById(targetId); if(!box)return;
-  const f=input.files&&input.files[0];
-  if(!f){box.innerHTML="";return}
-  const url=URL.createObjectURL(f);
-  box.innerHTML=`<img class="receipt-preview" src="${url}"><p class="small">已上傳圖片，可先確認是否清楚。</p>`;
-}
+function rateBox(){const t=trip(),c=t.mainCurrency||"JPY";return `<section class="card rate-card"><h3>匯率設定</h3><p class="small">全站金額以 ${c} 為主，台幣只作輔助換算。</p><label>${c} → TWD<input type="number" step="0.0001" value="${t.rates[c]??1}" onchange="trip().rates['${c}']=Number(this.value||1);render()"></label></section>`}
 function receiptScan(){
   openModal(`<h2>掃描收據</h2><p class="small">可拍照或從相簿上傳。按「AI辨識」會嘗試自動讀取文字；若辨識不完整，也可以手動確認明細。</p><div class="scan-choice"><label class="btn primary">📷 拍照<input id="scanCamera" type="file" accept="image/*" capture="environment" onchange="previewFile(this,'scanPreview')" hidden></label><label class="btn">🖼 從相簿上傳<input id="scanAlbum" type="file" accept="image/*" onchange="previewFile(this,'scanPreview')" hidden></label></div><div id="scanPreview"></div><button class="btn primary" onclick="runReceiptOCR()">✨ AI辨識明細</button><button class="btn" onclick="openReceiptConfirm()">手動確認明細</button><button class="btn" onclick="closeModal()">取消</button><div id="ocrStatus" class="small"></div>`)
 }
@@ -191,7 +207,12 @@ function saveReceiptExpense(receipt){
   names.forEach((name,i)=>{if(name||amounts[i])trip().expenses.push({name:name||'未命名品項',amount:amounts[i]||0,cur:c,memo:`收據：${rcStore.value||''} ${rcDate.value||''}`.trim(),receipt})});
   closeModal();render();
 }
-function expenses(){const t=trip(),c=t.mainCurrency||"JPY";let total=0;t.expenses.forEach(x=>{if((x.cur||c)===c)total+=Number(x.amount||0)});return `${rateBox()}<section class="card"><h2>💰 記帳</h2><div class="card"><b>${c} 總額</b><div class="money">${total} ${c}</div><p>約 NT$ ${Math.round(total*(t.rates[c]||1))}</p></div><button class="btn primary" onclick="receiptScan()">📷 掃描收據</button><input id="exName" placeholder="項目名稱"><input id="exAmount" type="number" placeholder="金額"><textarea id="exMemo" placeholder="備註"></textarea><input id="exReceipt" type="file" accept="image/*" onchange="previewFile(this,'expensePreview')"><div id="expensePreview"></div><button class="btn primary" onclick="addExpense()">新增</button></section>${t.expenses.map((x,i)=>`<section class="card">${x.receipt?`<img class="pic expense-thumb" src="${x.receipt}" ${imgAttrs(x.receipt)}>`:""}<h3>${esc(x.name)}</h3><div class="money">${x.amount} ${x.cur||c}</div><p>約 NT$ ${toTWD(x.amount,x.cur||c)}</p>${x.memo?`<p class="note">${esc(x.memo)}</p>`:""}<button class="btn" onclick="editExpense(${i})">編輯</button><button class="btn danger" onclick="delExpense(${i})">刪除</button></section>`).join("")}`}
+function expenses(){
+  const t=trip(),c=t.mainCurrency||"JPY";
+  let totalMain=0,totalTwd=0;
+  t.expenses.forEach(x=>{const cur=x.cur||c;totalMain+=toTripCurrency(x.amount,cur);totalTwd+=toTWD(x.amount,cur)});
+  return `${rateBox()}<section class="card"><h2>💰 記帳</h2><div class="card total-money"><b>${c} 總額</b><div class="money">${fmtMoney(totalMain,c)}</div><p class="small">約 NT$ ${Math.round(totalTwd).toLocaleString()}</p></div><button class="btn primary" onclick="receiptScan()">📷 掃描收據</button><input id="exName" placeholder="項目名稱"><input id="exAmount" type="number" placeholder="金額（${c}）"><textarea id="exMemo" placeholder="備註"></textarea><input id="exReceipt" type="file" accept="image/*" onchange="previewFile(this,'expensePreview')"><div id="expensePreview"></div><button class="btn primary" onclick="addExpense()">新增</button></section>${t.expenses.map((x,i)=>`<section class="card">${x.receipt?`<img class="pic expense-thumb" src="${x.receipt}" ${imgAttrs(x.receipt)}>`:""}<h3>${esc(x.name)}</h3>${moneyTextTrip(x.amount,x.cur||c)}${x.memo?`<p class="note">${esc(x.memo)}</p>`:""}<button class="btn" onclick="editExpense(${i})">編輯</button><button class="btn danger" onclick="delExpense(${i})">刪除</button></section>`).join("")}`
+}
 function addExpense(){const c=trip().mainCurrency||"JPY";readImage(exReceipt,receipt=>{trip().expenses.push({name:exName.value,amount:exAmount.value,cur:c,memo:exMemo.value,receipt});render()})}
 function editExpense(i){const x=trip().expenses[i],c=x.cur||trip().mainCurrency||"JPY";openModal(`<h2>編輯記帳</h2><input id="eeName" value="${esc(x.name)}" placeholder="項目名稱"><input id="eeAmount" type="number" value="${esc(x.amount)}" placeholder="金額"><select id="eeCur">${currencies.map(v=>`<option value="${v}" ${v===c?'selected':''}>${v}</option>`).join('')}</select><textarea id="eeMemo" placeholder="備註">${esc(x.memo||"")}</textarea>${x.receipt?`<img class="receipt-preview" src="${x.receipt}" ${imgAttrs(x.receipt)}>`:""}<input id="eeReceipt" type="file" accept="image/*" onchange="previewFile(this,'eePreview')"><div id="eePreview"></div><button class="btn primary" onclick="saveExpenseEdit(${i})">儲存</button><button class="btn" onclick="closeModal()">取消</button>`)}
 function saveExpenseEdit(i){const x=trip().expenses[i];readImage(eeReceipt,receipt=>{Object.assign(x,{name:eeName.value,amount:eeAmount.value,cur:eeCur.value,memo:eeMemo.value});if(receipt)x.receipt=receipt;closeModal();render()})}
@@ -200,10 +221,10 @@ function splits(){
   const t=trip(),c=t.mainCurrency||"JPY",tot={};
   t.members.forEach(m=>tot[m]={native:0,twd:0});
   t.splits.forEach(x=>{
-    const cur=x.cur||c, each=perPersonAmount(x), eachTwd=toTWD(each,cur);
-    (x.people||[]).forEach(p=>{if(!tot[p])tot[p]={native:0,twd:0}; if(cur===c)tot[p].native+=each; tot[p].twd+=eachTwd;});
+    const cur=x.cur||c, each=perPersonAmount(x), eachMain=toTripCurrency(each,cur), eachTwd=toTWD(each,cur);
+    (x.people||[]).forEach(p=>{if(!tot[p])tot[p]={native:0,twd:0}; tot[p].native+=eachMain; tot[p].twd+=eachTwd;});
   });
-  return `${rateBox()}<section class="card"><h2>👨‍👩‍👧‍👦 分攤</h2><div class="grid">${t.members.map(m=>`<div class="card split-total"><b>${esc(m)}</b><div class="money">NT$ ${Math.round(tot[m]?.twd||0).toLocaleString()}</div><p class="small">${c} 約 ${Math.round(tot[m]?.native||0).toLocaleString()}</p></div>`).join("")}</div><input id="spName" placeholder="項目"><div class="grid"><input id="spAmount" type="number" placeholder="總金額"><select id="spCur">${currencies.map(v=>`<option value="${v}" ${v===c?'selected':''}>${v}</option>`).join('')}</select></div><input id="spPhoto" type="file" accept="image/*" onchange="previewFile(this,'splitPreview')"><div id="splitPreview"></div><div class="people-box">${t.members.map(m=>`<label class="tag"><input type="checkbox" name="sp" value="${esc(m)}"> ${esc(m)}</label>`).join("")}</div><button class="btn primary" onclick="addSplit()">新增</button></section>${t.splits.map((x,i)=>{const cur=x.cur||c, each=perPersonAmount(x);return `<section class="card split-card">${x.photo?`<img class="pic expense-thumb" src="${x.photo}" ${imgAttrs(x.photo)}>`:""}<h3>${esc(x.name)}</h3><p>${moneyText(x.amount,cur)}</p><p>分攤：${(x.people||[]).join("、")}</p><p>每人：${Math.round(each).toLocaleString()} ${cur}｜約 NT$ ${toTWD(each,cur).toLocaleString()}</p><button class="btn" onclick="editSplit(${i})">編輯</button><button class="btn danger" onclick="delSplit(${i})">刪除</button></section>`}).join("")}`
+  return `${rateBox()}<section class="card"><h2>👨‍👩‍👧‍👦 分攤</h2><p class="small">主金額以旅程幣別 ${c} 顯示，約 NT$ 為輔助參考。</p><div class="grid">${t.members.map(m=>`<div class="card split-total"><b>${esc(m)}</b><div class="money">${fmtMoney(tot[m]?.native||0,c)}</div><p class="small">約 NT$ ${Math.round(tot[m]?.twd||0).toLocaleString()}</p></div>`).join("")}</div><input id="spName" placeholder="項目"><div class="grid"><input id="spAmount" type="number" placeholder="總金額"><select id="spCur">${currencies.map(v=>`<option value="${v}" ${v===c?'selected':''}>${v}</option>`).join('')}</select></div><input id="spPhoto" type="file" accept="image/*" onchange="previewFile(this,'splitPreview')"><div id="splitPreview"></div><div class="people-box">${t.members.map(m=>`<label class="tag"><input type="checkbox" name="sp" value="${esc(m)}"> ${esc(m)}</label>`).join("")}</div><button class="btn primary" onclick="addSplit()">新增</button></section>${t.splits.map((x,i)=>{const cur=x.cur||c, each=perPersonAmount(x);return `<section class="card split-card">${x.photo?`<img class="pic expense-thumb" src="${x.photo}" ${imgAttrs(x.photo)}>`:""}<h3>${esc(x.name)}</h3>${moneyTextTrip(x.amount,cur)}<p>分攤：${(x.people||[]).join("、")}</p><div class="each-money"><b>每人</b>${moneyTextTrip(each,cur)}</div><button class="btn" onclick="editSplit(${i})">編輯</button><button class="btn danger" onclick="delSplit(${i})">刪除</button></section>`}).join("")}`
 }
 function addSplit(){const people=[...document.querySelectorAll("input[name=sp]:checked")].map(x=>x.value),c=spCur.value||trip().mainCurrency||"JPY";if(!people.length)return alert("請勾選成員");readImage(spPhoto,photo=>{trip().splits.push({name:spName.value,amount:spAmount.value,cur:c,people,photo});render()})}
 function editSplit(i){const x=trip().splits[i],cur=x.cur||trip().mainCurrency||"JPY";openModal(`<h2>編輯分攤</h2><input id="seName" value="${esc(x.name)}"><div class="grid"><input id="seAmount" type="number" value="${esc(x.amount)}"><select id="seCur">${currencies.map(v=>`<option value="${v}" ${v===cur?'selected':''}>${v}</option>`).join('')}</select></div>${x.photo?`<img class="receipt-preview" src="${x.photo}" ${imgAttrs(x.photo)}>`:""}<input id="sePhoto" type="file" accept="image/*" onchange="previewFile(this,'sePreview')"><div id="sePreview"></div><div class="people-box">${trip().members.map(m=>`<label class="tag"><input type="checkbox" name="sep" value="${esc(m)}" ${x.people.includes(m)?'checked':''}> ${esc(m)}</label>`).join('')}</div><button class="btn primary" onclick="saveSplitEdit(${i})">儲存</button><button class="btn" onclick="closeModal()">取消</button>`)}
@@ -222,16 +243,16 @@ function downloadText(name,text,type='application/json'){
   a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
-function exportTrip(){const t=trip();downloadText(`${safeName(t.name)}.beartravel`,JSON.stringify({version:19,exportedAt:new Date().toISOString(),trip:t},null,2))}
-function exportAll(){downloadText(`BearTravel_全部備份_${new Date().toISOString().slice(0,10)}.beartravel`,JSON.stringify({version:19,exportedAt:new Date().toISOString(),state},null,2))}
+function exportTrip(){const t=trip();downloadText(`${safeName(t.name)}.beartravel`,JSON.stringify({version:21,exportedAt:new Date().toISOString(),trip:t},null,2))}
+function exportAll(){downloadText(`BearTravel_全部備份_${new Date().toISOString().slice(0,10)}.beartravel`,JSON.stringify({version:21,exportedAt:new Date().toISOString(),state},null,2))}
 function importFile(input,mode){const f=input.files&&input.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const data=JSON.parse(r.result);if(data.state){state=data.state}else if(data.trip){const t=data.trip;t.id=Date.now()+Math.random();norm(t);state.trips.push(t);currentTripId=t.id}else if(data.trips){state=data}else{throw new Error('format')}state.trips.forEach(norm);currentTripId=state.trips[0]?.id||null;currentTab=0;save();closeModal();render();alert('匯入完成')}catch(e){alert('檔案格式不正確')}};r.readAsText(f)}
 function openImport(){openModal(`<h2>匯入／還原</h2><p class="small">可匯入 .beartravel 或 JSON 備份檔。匯入單趟旅程會加入列表；匯入完整備份會覆蓋目前資料。</p><input type="file" accept=".beartravel,.json,application/json" onchange="importFile(this)"><button class="btn" onclick="closeModal()">取消</button>`)}
 function duplicateTrip(){const t=JSON.parse(JSON.stringify(trip()));t.id=Date.now()+Math.random();t.name=t.name+' 複製';norm(t);state.trips.push(t);currentTripId=t.id;currentTab=0;render()}
 function printTrip(){window.print()}
-function autoBackup(){localStorage.setItem('bearTravelPlanner_v15_autoBackup',JSON.stringify({time:new Date().toISOString(),state}))}
+function autoBackup(){localStorage.setItem('bearTravelPlanner_v21_autoBackup',JSON.stringify({time:new Date().toISOString(),state}))}
 const oldSave=save; save=function(){oldSave();try{autoBackup()}catch(e){}}
 
-function toolsPage(){const t=trip(),c=t.mainCurrency||'JPY';return `<section class="card"><h2>⚙️ 工具</h2><p class="small">資料目前存在手機瀏覽器。建議出發前與排完行程後都下載一份備份。</p><div class="tool-grid"><button class="btn primary" onclick="exportTrip()">匯出這趟旅程</button><button class="btn primary" onclick="exportAll()">一鍵完整備份</button><button class="btn" onclick="openImport()">匯入／還原</button><button class="btn" onclick="duplicateTrip()">複製旅程</button><button class="btn" onclick="printTrip()">匯出 PDF / 列印</button></div></section><section class="card"><h2>💱 匯率換算</h2><div class="grid"><input id="cvAmount" type="number" placeholder="金額，例如 1000"><select id="cvCur">${currencies.map(x=>`<option value="${x}" ${x===c?'selected':''}>${x}</option>`).join('')}</select></div><button class="btn primary" onclick="convertMoney()">換算台幣</button><div id="cvResult" class="note">輸入金額後按換算。</div><h3>匯率設定</h3>${currencies.map(x=>`<label>${x} → TWD<input type="number" step="0.001" value="${t.rates[x]??1}" onchange="trip().rates['${x}']=Number(this.value);save()"></label>`).join('')}</section><section class="card"><h2>☁️ 雲端同步</h2><p class="small">目前先保留未來擴充位置。真正雲端同步需要登入服務或後端資料庫，這版先不假裝有同步。</p></section>`}
+function toolsPage(){const t=trip(),c=t.mainCurrency||'JPY';return `<section class="card"><h2>⚙️ 工具</h2><p class="small">正式使用前建議先按「一鍵完整備份」。資料存在手機瀏覽器，下載備份後換手機也可以匯入還原。</p><div class="tool-grid"><button class="btn primary" onclick="exportTrip()">匯出這趟旅程</button><button class="btn primary" onclick="exportAll()">一鍵完整備份</button><button class="btn" onclick="openImport()">匯入／還原</button><button class="btn" onclick="duplicateTrip()">複製旅程</button><button class="btn" onclick="printTrip()">匯出 PDF / 列印</button></div><p class="small">目前版本：Bear Travel Planner v21 正式可用版</p></section><section class="card"><h2>💱 匯率換算</h2><div class="grid"><input id="cvAmount" type="number" placeholder="金額，例如 1000"><select id="cvCur">${currencies.map(x=>`<option value="${x}" ${x===c?'selected':''}>${x}</option>`).join('')}</select></div><button class="btn primary" onclick="convertMoney()">換算台幣</button><div id="cvResult" class="note">輸入金額後按換算。</div><h3>匯率設定</h3><p class="small">更改匯率後，記帳與分攤的「約 NT$」會重新換算，原始旅程幣別金額不會被改掉。</p>${currencies.map(x=>`<label>${x} → TWD<input type="number" step="0.0001" value="${t.rates[x]??1}" onchange="trip().rates['${x}']=Number(this.value||1);render()"></label>`).join('')}</section>`}
 function convertMoney(){const a=Number(cvAmount.value||0),cur=cvCur.value,rate=trip().rates[cur]||1;cvResult.textContent=`約 NT$ ${Math.round(a*rate)}（${a} ${cur} × ${rate}）`}
 
 function searchPage(){return `<section class="card"><h2>🔍 全旅程搜尋</h2><input id="q" placeholder="搜尋行程、必買、記帳、備忘、行李，例如：拉麵 / UNIQLO / 燒肉" oninput="doSearch()"><div id="searchResult" class="search-result"><p class="small">輸入關鍵字後會搜尋所有旅程。</p></div></section>`}
