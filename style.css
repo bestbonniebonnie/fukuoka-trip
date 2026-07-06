@@ -167,3 +167,6 @@ body{background:linear-gradient(180deg,#dfbf9e 0%,#d5aa82 52%,#c99468 100%)}
 .ticket-info b{display:block;font-size:15px;line-height:1.35;color:var(--brown);word-break:break-word}
 .ticket-info small{display:block;margin-top:4px;font-size:12px;color:#8c674d;line-height:1.35;white-space:pre-wrap}
 @media (min-width:700px){.ticket-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
+/* Cross-day copy / move tools */
+.filters .day-tool-btn{background:#f3dfc7!important;color:#6b432d!important;border-color:#d9b58e!important;flex:0 0 auto}
+.scan-choice .btn.dark,.btn.dark{background:#8b6548;color:#fff}
