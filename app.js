@@ -65,9 +65,22 @@ function save(){
   state.schemaVersion=1;
   state.appVersion=APP_VERSION;
   const payload=JSON.stringify(state);
-  localStorage.setItem(STORE_KEY,payload);
-  localStorage.setItem("bearTravelPlanner_lastSaved",new Date().toISOString());
-  localStorage.setItem(BACKUP_KEY,JSON.stringify({time:new Date().toISOString(),state}));
+  try{
+    localStorage.setItem(STORE_KEY,payload);
+    localStorage.setItem("bearTravelPlanner_lastSaved",new Date().toISOString());
+    try{localStorage.setItem(BACKUP_KEY,JSON.stringify({time:new Date().toISOString(),state}))}catch(e){localStorage.removeItem(BACKUP_KEY)}
+  }catch(e){
+    // 儲存空間滿時，不讓畫面整個空白。先清掉自動備份再嘗試儲存主要資料。
+    console.warn("Bear Travel Planner save failed", e);
+    try{
+      localStorage.removeItem(BACKUP_KEY);
+      localStorage.setItem(STORE_KEY,payload);
+      localStorage.setItem("bearTravelPlanner_lastSaved",new Date().toISOString());
+    }catch(e2){
+      console.warn("Bear Travel Planner primary save failed", e2);
+      window.__BTP_SAVE_ERROR__=true;
+    }
+  }
 }
 function trip(){return state.trips.find(t=>t.id==currentTripId)}
 function esc(s){return String(s??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;")}
@@ -149,7 +162,7 @@ function editTrip(i){const t=state.trips[i];openModal(`<h2>編輯旅程</h2><inp
 function delTrip(i){if(state.trips.length<=1)return alert("至少保留一趟旅程");if(confirm("刪除旅程？")){state.trips.splice(i,1);currentTripId=state.trips[0].id;render()}}
 
 /* overview */
-function overview(){const t=trip(),c=t.mainCurrency||"JPY";return `<section class="formal-status"><div><b>正式版 1.0</b><p>${lastSavedText()}｜資料存在本機，建議出發前匯出備份。</p></div><button class="btn primary" onclick="exportAll()">一鍵備份</button></section><section class="card"><h2>🍁 旅程設定</h2><p class="small">${esc(t.name)}｜${esc(t.date)}｜${t.days.length}天｜${t.members.length}位旅伴｜${c}</p><h3>旅伴設定</h3><input id="members" value="${esc(t.members.join(","))}"><button class="btn primary" onclick="trip().members=members.value.split(',').map(x=>x.trim()).filter(Boolean);render()">更新旅伴</button><h3>主要幣別</h3><select id="mainCur">${currencies.map(cur=>`<option value="${cur}" ${cur===c?"selected":""}>${cur}</option>`).join("")}</select><button class="btn primary" onclick="trip().mainCurrency=mainCur.value;render()">更新幣別</button><h3>天數設定</h3><button class="btn dark" onclick="addDay()">＋增加一天</button><button class="btn danger" onclick="removeDay()">－減少一天</button></section>`}
+function overview(){const t=trip(),c=t.mainCurrency||"JPY";const warn=window.__BTP_SAVE_ERROR__?`<section class="card warning"><h3>⚠️ 儲存空間可能已滿</h3><p class="small">請先按「一鍵備份」下載資料，再考慮刪除一些大型照片或清理舊備份。畫面不會再因此空白。</p></section>`:"";return `${warn}<section class="formal-status"><div><b>正式版 1.0</b><p>${lastSavedText()}｜資料存在本機，建議出發前匯出備份。</p></div><button class="btn primary" onclick="exportAll()">一鍵備份</button></section><section class="card"><h2>🍁 旅程設定</h2><p class="small">${esc(t.name)}｜${esc(t.date)}｜${t.days.length}天｜${t.members.length}位旅伴｜${c}</p><h3>旅伴設定</h3><input id="members" value="${esc(t.members.join(","))}"><button class="btn primary" onclick="trip().members=members.value.split(',').map(x=>x.trim()).filter(Boolean);render()">更新旅伴</button><h3>主要幣別</h3><select id="mainCur">${currencies.map(cur=>`<option value="${cur}" ${cur===c?"selected":""}>${cur}</option>`).join("")}</select><button class="btn primary" onclick="trip().mainCurrency=mainCur.value;render()">更新幣別</button><h3>天數設定</h3><button class="btn dark" onclick="addDay()">＋增加一天</button><button class="btn danger" onclick="removeDay()">－減少一天</button></section>`}
 function addDay(){trip().days.push([]);trip().dayMeta.push({weather:"",outfit:""});render()}
 function removeDay(){if(trip().days.length<=1)return;if(confirm("刪除最後一天？")){trip().days.pop();trip().dayMeta.pop();render()}}
 
