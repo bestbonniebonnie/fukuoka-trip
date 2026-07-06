@@ -157,3 +157,13 @@ body{background:linear-gradient(180deg,#dfbf9e 0%,#d5aa82 52%,#c99468 100%)}
 
 /* v19 formal-use refinements */
 .split-total .money{font-size:20px;color:#5b321d}.split-card p{margin:7px 0}.ocr-raw{background:#fff8ef;border:1px solid var(--line);border-radius:16px;padding:10px;margin:10px 0}.ocr-raw summary{font-weight:800;color:#7d5435;cursor:pointer}.ocr-raw textarea{min-height:120px;background:#fffdf8}.receipt-confirm-card h3{margin-top:12px}.scan-choice+.small,#ocrStatus{margin-top:10px;color:#7b5438}.receipt-line .rAmount{text-align:right}
+
+
+/* Tickets / coupon image folder */
+.ticket-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:12px 0}
+.ticket-card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:10px;box-shadow:0 8px 18px var(--shadow);display:flex;flex-direction:column;gap:8px;min-width:0}
+.ticket-thumb{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:16px;background:#f6eadf;border:1px solid rgba(106,75,55,.12)}
+.ticket-empty{display:flex;align-items:center;justify-content:center;font-size:42px;color:#8b6040}
+.ticket-info b{display:block;font-size:15px;line-height:1.35;color:var(--brown);word-break:break-word}
+.ticket-info small{display:block;margin-top:4px;font-size:12px;color:#8c674d;line-height:1.35;white-space:pre-wrap}
+@media (min-width:700px){.ticket-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}

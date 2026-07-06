@@ -1,22 +1,6 @@
 
-const APP_VERSION="1.0-preserve-data-20260706";
-const DATA_VERSION=1;
-const STORE_KEY="bearTravelPlanner"; // 永久資料庫名稱：之後更新都固定用這個，不再因版本號換資料庫
-const BACKUP_KEY="bearTravelPlanner_autoBackup";
-const BACKUP_RING_KEY="bearTravelPlanner_backupRing";
-const MIGRATION_BACKUP_KEY="bearTravelPlanner_beforeMigrationBackup";
-const OLD_KEYS=["bearTravelPlanner_1_0","bearTravelPlannerStable","bearTravelPlanner_stable","bearTravelPlanner_v21","bearTravelPlanner_v20","bearTravelPlanner_v19","bearTravelPlanner_v18","bearTravelPlanner_v17","bearTravelPlanner_v16","bearTravelPlanner_v15","bearTravelPlanner_v14","bearTravelPlanner_v13","bearTravelPlanner_v12","bearTravelPlanner_v11","bearTravelPlanner_v10","bearTravelPlanner_v9","bearTravelPlanner_v5","bearTravelPlanner_v3","bearTravelPlanner_v2_full","bearTravelPlanner_v1_full","bearTravelPlannerV4","bearMultiTripV3","bearMultiTrip"];
-function candidateStorageKeys(){
-  const keys=[...OLD_KEYS];
-  try{
-    for(let i=0;i<localStorage.length;i++){
-      const k=localStorage.key(i)||"";
-      if(k===STORE_KEY||k===BACKUP_KEY||k===BACKUP_RING_KEY||k===MIGRATION_BACKUP_KEY)continue;
-      if(/bear.*(travel|planner)|travel.*planner|bearMultiTrip/i.test(k) && !keys.includes(k)) keys.push(k);
-    }
-  }catch(e){}
-  return keys;
-}
+const STORE_KEY="bearTravelPlanner_v21";
+const OLD_KEYS=["bearTravelPlanner_v20","bearTravelPlanner_v19","bearTravelPlanner_v18","bearTravelPlanner_v17","bearTravelPlanner_v16","bearTravelPlanner_v15","bearTravelPlanner_v14","bearTravelPlanner_v13","bearTravelPlanner_v12","bearTravelPlanner_v11","bearTravelPlanner_v10","bearTravelPlanner_v5","bearTravelPlanner_v3","bearTravelPlanner_v2_full","bearTravelPlanner_v1_full","bearTravelPlannerV4","bearMultiTripV3","bearMultiTrip"];
 const types=["🏯 景點","🏨 住宿","🍜 美食","🛍 購物","☕ 咖啡廳"];
 const transports=["🚗 開車","🚶‍♀️ 走路","🚕 計程車","🚆 大眾交通","🚌 巴士"];
 const currencies=["JPY","TWD","KRW","THB","USD","EUR"];
@@ -26,72 +10,11 @@ let state=loadState(), currentTripId=state.trips[0]?.id||null, currentTab=0, fil
 const app=document.getElementById("app"), tabsEl=document.getElementById("tabs"), subtitle=document.getElementById("subtitle"), mainTitle=document.getElementById("mainTitle"), modal=document.getElementById("modal"), modalBody=document.getElementById("modalBody"), backToTrips=document.getElementById("backToTrips");
 backToTrips.onclick=()=>{currentTripId=null;currentTab=0;render()}; modal.onclick=e=>{if(e.target.id==="modal")closeModal()};
 
-function defTrip(){return {id:Date.now()+Math.random(),name:"🍁 福岡 Autumn",date:"2026.10.10－10.14",startDate:"2026-10-10",members:["爸爸","媽媽","弟弟","妹妹","🐻","👦🏻"],mainCurrency:"JPY",rates:{JPY:.21,TWD:1,KRW:.023,THB:.9},flight:{go:{airline:"",no:"",from:"TPE",to:"FUK",time:"",duration:"",terminal:"",note:""},back:{airline:"",no:"",from:"FUK",to:"TPE",time:"",duration:"",terminal:"",note:""}},days:Array.from({length:5},()=>[]),expenses:[],splits:[],buy:[],dayMeta:[],notes:[],luggage:[]}}
-function stableWrap(s){s=s&&typeof s==="object"?s:{}; if(Array.isArray(s.trips)){} else if(s.state&&Array.isArray(s.state.trips))s=s.state; else if(s.trip)s={trips:[s.trip]}; else s={trips:[defTrip()]}; s.app="Bear Travel Planner"; s.dataVersion=DATA_VERSION; s.updatedAt=new Date().toISOString(); return s}
-function migrateState(s){s=stableWrap(s); if(!s.trips.length)s.trips=[defTrip()]; s.trips.forEach(norm); return s}
-function readStoredJson(key){const raw=localStorage.getItem(key); if(!raw)return null; return JSON.parse(raw)}
-function looksLikeState(x){
-  if(!x || typeof x!=="object") return false;
-  if(Array.isArray(x.trips)) return true;
-  if(x.state && Array.isArray(x.state.trips)) return true;
-  if(x.trip) return true;
-  return false;
-}
-function loadState(){
-  let loaded=null, sourceKey="";
-  try{const v=readStoredJson(STORE_KEY); if(looksLikeState(v)){loaded=v;sourceKey=STORE_KEY}}catch(e){}
-  if(!loaded){
-    for(const k of candidateStorageKeys()){
-      try{const v=readStoredJson(k); if(looksLikeState(v)){loaded=v;sourceKey=k;break}}catch(e){}
-    }
-  }
-  if(!loaded){
-    try{const b=readStoredJson(BACKUP_KEY); if(b&&looksLikeState(b.state)){loaded=b.state;sourceKey=BACKUP_KEY}}catch(e){}
-  }
-  if(!loaded){
-    try{const ring=readStoredJson(BACKUP_RING_KEY)||[]; for(let i=ring.length-1;i>=0;i--){if(looksLikeState(ring[i].state)){loaded=ring[i].state;sourceKey=BACKUP_RING_KEY;break}}}catch(e){}
-  }
-  let s;
-  try{s=migrateState(loaded||{trips:[defTrip()]})}catch(e){console.error('migration failed',e);s={trips:[defTrip()],dataVersion:DATA_VERSION}}
-  if(sourceKey && sourceKey!==STORE_KEY){
-    try{localStorage.setItem(MIGRATION_BACKUP_KEY,JSON.stringify({time:new Date().toISOString(),from:sourceKey,state:s}))}catch(e){}
-    try{localStorage.setItem(STORE_KEY,JSON.stringify(s))}catch(e){}
-  }
-  return s;
-}
-function norm(t){t.members||=[];t.mainCurrency||="JPY";t.rates=Object.assign({JPY:.21,TWD:1,KRW:.023,THB:.9,USD:32,EUR:35},t.rates||{});t.days=(t.days&&t.days.length)?t.days:[[],[],[],[],[]];t.expenses||=[];t.splits||=[];t.buy||=[];t.dayMeta||=[];t.notes||=[];t.luggage||=[];while(t.dayMeta.length<t.days.length)t.dayMeta.push({weather:"",outfit:""});t.startDate=t.startDate||parseStartDate(t.date)||""; if(!t.flight)t.flight=defTrip().flight; if(typeof t.flight.go==="string")t.flight=defTrip().flight; ["go","back"].forEach(k=>{t.flight[k]||={};Object.assign(t.flight[k],{airline:t.flight[k].airline||"",no:t.flight[k].no||"",from:t.flight[k].from||(k==="go"?"TPE":"FUK"),to:t.flight[k].to||(k==="go"?"FUK":"TPE"),time:fmtTime(t.flight[k].time||""),duration:t.flight[k].duration||"",terminal:t.flight[k].terminal||"",note:t.flight[k].note||""})});t.days.forEach(day=>day.forEach(x=>{x.arrive=fmtTime(x.arrive||"");x.type=x.type||types[0];x.moveTime=x.moveTime||""}));t.expenses.forEach(x=>{x.cur=x.cur||t.mainCurrency||"JPY"});t.splits.forEach(x=>{x.cur=x.cur||t.mainCurrency||"JPY";x.people=x.people||[]})}
+function defTrip(){return {id:Date.now()+Math.random(),name:"🍁 福岡 Autumn",date:"2026.10.10－10.14",startDate:"2026-10-10",members:["爸爸","媽媽","弟弟","妹妹","🐻","👦🏻"],mainCurrency:"JPY",rates:{JPY:.21,TWD:1,KRW:.023,THB:.9},flight:{go:{airline:"",no:"",from:"TPE",to:"FUK",time:"",duration:"",terminal:"",note:""},back:{airline:"",no:"",from:"FUK",to:"TPE",time:"",duration:"",terminal:"",note:""}},days:Array.from({length:5},()=>[]),expenses:[],splits:[],buy:[],dayMeta:[],notes:[],luggage:[],tickets:[]}}
+function loadState(){try{let raw=localStorage.getItem(STORE_KEY); if(!raw){for(const k of OLD_KEYS){raw=localStorage.getItem(k);if(raw)break}} const s=raw?JSON.parse(raw):{trips:[defTrip()]}; if(!s.trips?.length)s.trips=[defTrip()]; s.trips.forEach(norm); return s}catch{return{trips:[defTrip()]}}}
+function norm(t){t.members||=[];t.mainCurrency||="JPY";t.rates||={JPY:.21,TWD:1,KRW:.023,THB:.9};t.days=(t.days&&t.days.length)?t.days:[[],[],[],[],[]];t.expenses||=[];t.splits||=[];t.buy||=[];t.dayMeta||=[];t.notes||=[];t.luggage||=[];t.tickets||=[];while(t.dayMeta.length<t.days.length)t.dayMeta.push({weather:"",outfit:""});t.startDate=t.startDate||parseStartDate(t.date)||""; if(!t.flight)t.flight=defTrip().flight; if(typeof t.flight.go==="string")t.flight=defTrip().flight; ["go","back"].forEach(k=>{t.flight[k]||={};Object.assign(t.flight[k],{airline:t.flight[k].airline||"",no:t.flight[k].no||"",from:t.flight[k].from||(k==="go"?"TPE":"FUK"),to:t.flight[k].to||(k==="go"?"FUK":"TPE"),time:t.flight[k].time||"",duration:t.flight[k].duration||"",terminal:t.flight[k].terminal||"",note:t.flight[k].note||""})})}
 function parseStartDate(str){const m=String(str||"").match(/(\d{4})[.\/-](\d{1,2})[.\/-](\d{1,2})/);if(!m)return "";return `${m[1]}-${String(m[2]).padStart(2,"0")}-${String(m[3]).padStart(2,"0")}`}
-function backupCurrent(reason="auto"){
-  try{
-    const raw=localStorage.getItem(STORE_KEY);
-    if(raw){
-      const parsed=JSON.parse(raw);
-      localStorage.setItem(BACKUP_KEY,JSON.stringify({time:new Date().toISOString(),reason,state:parsed}));
-      let ring=[];
-      try{ring=JSON.parse(localStorage.getItem(BACKUP_RING_KEY)||"[]")}catch(e){ring=[]}
-      ring.push({time:new Date().toISOString(),reason,state:parsed});
-      ring=ring.slice(-5);
-      localStorage.setItem(BACKUP_RING_KEY,JSON.stringify(ring));
-    }
-  }catch(e){console.warn('backup failed',e)}
-}
-function save(){
-  try{
-    state=migrateState(state);
-    const next=JSON.stringify(stableWrap(state));
-    const prev=localStorage.getItem(STORE_KEY);
-    if(prev && prev!==next) backupCurrent('before-save');
-    localStorage.setItem(STORE_KEY,next);
-    return true;
-  }catch(e){
-    console.warn('Bear Travel Planner save failed',e);
-    try{
-      // 若手機容量不足，至少保留目前畫面，不讓程式清空資料。
-      localStorage.setItem(BACKUP_KEY,JSON.stringify({time:new Date().toISOString(),reason:'failed-save-memory',state:stableWrap(state)}));
-    }catch(_e){}
-    return false;
-  }
-}
+function save(){localStorage.setItem(STORE_KEY,JSON.stringify(state))}
 function trip(){return state.trips.find(t=>t.id==currentTripId)}
 function esc(s){return String(s??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;")}
 function fmtTime(v){v=String(v||"").trim(); if(/^\d{3,4}$/.test(v)){v=v.padStart(4,"0"); return v.slice(0,2)+":"+v.slice(2)} return v}
@@ -151,10 +74,10 @@ function parseMoneyLike(s){
 function openModal(h){modalBody.innerHTML=h;modal.classList.remove("hidden")}function closeModal(){modal.classList.add("hidden");modalBody.innerHTML=""}
 function previewImage(src){if(!src)return;openModal(`<h2>圖片預覽</h2><img class="full-preview" src="${src}"><p class="small">點空白處可關閉。</p>`)}
 function imgAttrs(src){return `onclick="previewImage('${src}')" oncontextmenu="event.preventDefault();previewImage('${src}');return false"`}
-function tabs(){if(!currentTripId)return["旅程"];const t=trip();return["總覽","航班",...t.days.map((_,i)=>`Day ${i+1}`),"記帳","分攤","必買","搜尋","備忘","行李","工具"]}
+function tabs(){if(!currentTripId)return["旅程"];const t=trip();return["總覽","航班",...t.days.map((_,i)=>`Day ${i+1}`),"記帳","分攤","必買","票券","搜尋","備忘","行李","工具"]}
 function renderTabs(){tabsEl.innerHTML=tabs().map((x,i)=>`<button class="${i===currentTab?'active':''}" onclick="setTab(${i})">${x}</button>`).join("")}
 function setTab(i){currentTab=i;filterType="全部";render()}
-function render(){save();renderTabs();const t=trip();backToTrips.classList.toggle("hidden",!currentTripId);if(mainTitle)mainTitle.textContent=currentTripId?`${t.name} | ${t.date||"未設定日期"}`:"🍁 Bear Travel Planner";if(subtitle)subtitle.textContent="";if(!currentTripId){app.innerHTML=tripList();return} if(currentTab===0)app.innerHTML=overview();else if(currentTab===1)app.innerHTML=flight();else if(currentTab>=2&&currentTab<2+t.days.length)app.innerHTML=day(currentTab-2);else if(currentTab===2+t.days.length)app.innerHTML=expenses();else if(currentTab===3+t.days.length)app.innerHTML=splits();else if(currentTab===4+t.days.length)app.innerHTML=buy();else if(currentTab===5+t.days.length)app.innerHTML=searchPage();else if(currentTab===6+t.days.length)app.innerHTML=notesPage();else if(currentTab===7+t.days.length)app.innerHTML=luggagePage();else app.innerHTML=toolsPage()}
+function render(){save();renderTabs();const t=trip();backToTrips.classList.toggle("hidden",!currentTripId);if(mainTitle)mainTitle.textContent=currentTripId?`${t.name} | ${t.date||"未設定日期"}`:"🍁 Bear Travel Planner";if(subtitle)subtitle.textContent="";if(!currentTripId){app.innerHTML=tripList();return} if(currentTab===0)app.innerHTML=overview();else if(currentTab===1)app.innerHTML=flight();else if(currentTab>=2&&currentTab<2+t.days.length)app.innerHTML=day(currentTab-2);else if(currentTab===2+t.days.length)app.innerHTML=expenses();else if(currentTab===3+t.days.length)app.innerHTML=splits();else if(currentTab===4+t.days.length)app.innerHTML=buy();else if(currentTab===5+t.days.length)app.innerHTML=ticketsPage();else if(currentTab===6+t.days.length)app.innerHTML=searchPage();else if(currentTab===7+t.days.length)app.innerHTML=notesPage();else if(currentTab===8+t.days.length)app.innerHTML=luggagePage();else app.innerHTML=toolsPage()}
 function dayDate(i){if(!trip().startDate)return{w:"DAY",d:`Day ${i+1}`,full:`Day ${i+1}`};const d=new Date(trip().startDate+"T00:00:00");d.setDate(d.getDate()+i);return{w:week[d.getDay()],d:`${d.getDate()}`,full:`${d.getMonth()+1}/${d.getDate()}`}}
 function itemClass(x){const s=x.type||"";if(s.includes("住宿"))return"stay";if(s.includes("美食"))return"food";if(s.includes("購物"))return"shop";if(s.includes("咖啡"))return"cafe";return""}
 function typeIcon(x){const s=x||"";if(s.includes("住宿"))return"🏨";if(s.includes("美食"))return"🍜";if(s.includes("購物"))return"🛍";if(s.includes("咖啡"))return"☕";return"🏯"}
@@ -320,43 +243,47 @@ function downloadText(name,text,type='application/json'){
   a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
-function exportTrip(){const t=trip();downloadText(`${safeName(t.name)}.beartravel`,JSON.stringify({version:DATA_VERSION,appVersion:APP_VERSION,exportedAt:new Date().toISOString(),trip:t},null,2))}
-function exportAll(){downloadText(`BearTravel_全部備份_${new Date().toISOString().slice(0,10)}.beartravel`,JSON.stringify({version:DATA_VERSION,appVersion:APP_VERSION,exportedAt:new Date().toISOString(),state},null,2))}
-function importFile(input,mode){const f=input.files&&input.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const data=JSON.parse(r.result);backupCurrent('before-import');if(data.state){state=migrateState(data.state)}else if(data.trip){const t=data.trip;t.id=Date.now()+Math.random();norm(t);state.trips.push(t)}else if(data.trips){state=migrateState(data)}else{throw new Error('format')}state.trips.forEach(norm);currentTripId=state.trips[0]?.id||null;currentTab=0;save();closeModal();render();alert('匯入完成，原本資料已先自動備份')}catch(e){alert('檔案格式不正確')}};r.readAsText(f)}
+function exportTrip(){const t=trip();downloadText(`${safeName(t.name)}.beartravel`,JSON.stringify({version:21,exportedAt:new Date().toISOString(),trip:t},null,2))}
+function exportAll(){downloadText(`BearTravel_全部備份_${new Date().toISOString().slice(0,10)}.beartravel`,JSON.stringify({version:21,exportedAt:new Date().toISOString(),state},null,2))}
+function importFile(input,mode){const f=input.files&&input.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const data=JSON.parse(r.result);if(data.state){state=data.state}else if(data.trip){const t=data.trip;t.id=Date.now()+Math.random();norm(t);state.trips.push(t);currentTripId=t.id}else if(data.trips){state=data}else{throw new Error('format')}state.trips.forEach(norm);currentTripId=state.trips[0]?.id||null;currentTab=0;save();closeModal();render();alert('匯入完成')}catch(e){alert('檔案格式不正確')}};r.readAsText(f)}
 function openImport(){openModal(`<h2>匯入／還原</h2><p class="small">可匯入 .beartravel 或 JSON 備份檔。匯入單趟旅程會加入列表；匯入完整備份會覆蓋目前資料。</p><input type="file" accept=".beartravel,.json,application/json" onchange="importFile(this)"><button class="btn" onclick="closeModal()">取消</button>`)}
 function duplicateTrip(){const t=JSON.parse(JSON.stringify(trip()));t.id=Date.now()+Math.random();t.name=t.name+' 複製';norm(t);state.trips.push(t);currentTripId=t.id;currentTab=0;render()}
 function printTrip(){window.print()}
-function autoBackup(){backupCurrent('manual-auto')}
-function restoreLatestBackup(){
-  try{
-    let b=readStoredJson(BACKUP_KEY);
-    if(!b||!looksLikeState(b.state)){
-      const ring=readStoredJson(BACKUP_RING_KEY)||[];
-      b=ring.reverse().find(x=>looksLikeState(x.state));
-    }
-    if(!b||!looksLikeState(b.state)) return alert('目前沒有可還原的自動備份');
-    if(!confirm('確定要還原最近一次自動備份？目前資料會先保留一份備份。')) return;
-    backupCurrent('before-restore');
-    state=migrateState(b.state);
-    currentTripId=state.trips[0]?.id||null;
-    currentTab=0;
-    save();
-    closeModal();
-    render();
-    alert('已還原最近一次自動備份');
-  }catch(e){alert('還原失敗')}
-}
-function clearAppCache(){
-  if('serviceWorker' in navigator){
-    navigator.serviceWorker.getRegistrations().then(rs=>Promise.all(rs.map(r=>r.unregister()))).finally(()=>{location.href=location.pathname+'?fresh='+Date.now()});
-  }else location.href=location.pathname+'?fresh='+Date.now();
-}
+function autoBackup(){localStorage.setItem('bearTravelPlanner_v21_autoBackup',JSON.stringify({time:new Date().toISOString(),state}))}
+const oldSave=save; save=function(){oldSave();try{autoBackup()}catch(e){}}
 
-function toolsPage(){const t=trip(),c=t.mainCurrency||'JPY';return `<section class="card"><h2>⚙️ 工具</h2><p class="small">正式使用前建議先按「一鍵完整備份」。資料存在手機瀏覽器，下載備份後換手機也可以匯入還原。</p><div class="tool-grid"><button class="btn primary" onclick="exportTrip()">匯出這趟旅程</button><button class="btn primary" onclick="exportAll()">一鍵完整備份</button><button class="btn" onclick="openImport()">匯入 JSON／還原</button><button class="btn" onclick="restoreLatestBackup()">還原自動備份</button><button class="btn" onclick="duplicateTrip()">複製旅程</button><button class="btn" onclick="printTrip()">匯出 PDF / 列印</button><button class="btn" onclick="clearAppCache()">清除舊快取並重開</button></div><p class="small">目前版本：Bear Travel Planner 1.0 資料保留版｜固定資料庫：bearTravelPlanner｜更新 UI 不會換資料庫。</p></section><section class="card"><h2>💱 匯率換算</h2><div class="grid"><input id="cvAmount" type="number" placeholder="金額，例如 1000"><select id="cvCur">${currencies.map(x=>`<option value="${x}" ${x===c?'selected':''}>${x}</option>`).join('')}</select></div><button class="btn primary" onclick="convertMoney()">換算台幣</button><div id="cvResult" class="note">輸入金額後按換算。</div><h3>匯率設定</h3><p class="small">更改匯率後，記帳與分攤的「約 NT$」會重新換算，原始旅程幣別金額不會被改掉。</p>${currencies.map(x=>`<label>${x} → TWD<input type="number" step="0.0001" value="${t.rates[x]??1}" onchange="trip().rates['${x}']=Number(this.value||1);render()"></label>`).join('')}</section>`}
+function toolsPage(){const t=trip(),c=t.mainCurrency||'JPY';return `<section class="card"><h2>⚙️ 工具</h2><p class="small">正式使用前建議先按「一鍵完整備份」。資料存在手機瀏覽器，下載備份後換手機也可以匯入還原。</p><div class="tool-grid"><button class="btn primary" onclick="exportTrip()">匯出這趟旅程</button><button class="btn primary" onclick="exportAll()">一鍵完整備份</button><button class="btn" onclick="openImport()">匯入／還原</button><button class="btn" onclick="duplicateTrip()">複製旅程</button><button class="btn" onclick="printTrip()">匯出 PDF / 列印</button></div><p class="small">目前版本：Bear Travel Planner v21 正式可用版</p></section><section class="card"><h2>💱 匯率換算</h2><div class="grid"><input id="cvAmount" type="number" placeholder="金額，例如 1000"><select id="cvCur">${currencies.map(x=>`<option value="${x}" ${x===c?'selected':''}>${x}</option>`).join('')}</select></div><button class="btn primary" onclick="convertMoney()">換算台幣</button><div id="cvResult" class="note">輸入金額後按換算。</div><h3>匯率設定</h3><p class="small">更改匯率後，記帳與分攤的「約 NT$」會重新換算，原始旅程幣別金額不會被改掉。</p>${currencies.map(x=>`<label>${x} → TWD<input type="number" step="0.0001" value="${t.rates[x]??1}" onchange="trip().rates['${x}']=Number(this.value||1);render()"></label>`).join('')}</section>`}
 function convertMoney(){const a=Number(cvAmount.value||0),cur=cvCur.value,rate=trip().rates[cur]||1;cvResult.textContent=`約 NT$ ${Math.round(a*rate)}（${a} ${cur} × ${rate}）`}
 
+
+function ticketsPage(){
+  const t=trip();
+  const items=t.tickets||[];
+  return `<section class="card"><h2>🎟️ 票券／圖片夾</h2><p class="small">可存放優惠券、QR Code、訂位截圖、租車資料、eSIM、菜單等需要臨時出示的圖片。</p><input id="ticketTitle" placeholder="名稱，例如：唐吉優惠券／餐廳訂位"><textarea id="ticketMemo" placeholder="備註，例如：結帳前出示／10:30入場"></textarea><input id="ticketPic" type="file" accept="image/*" onchange="previewFile(this,'ticketPreview')"><div id="ticketPreview"></div><button class="btn primary" onclick="addTicket()">新增圖片</button></section>${items.length?`<section class="ticket-grid">${items.map((x,i)=>`<div class="ticket-card">${x.pic?`<img class="ticket-thumb" src="${x.pic}" ${imgAttrs(x.pic)}>`:`<div class="ticket-thumb ticket-empty">🎟️</div>`}<div class="ticket-info"><b>${esc(x.title||'未命名圖片')}</b>${x.memo?`<small>${esc(x.memo)}</small>`:''}</div><div class="mini-actions"><button class="delete-mini edit" onclick="editTicket(${i})">編輯</button><button class="delete-mini" onclick="delTicket(${i})">刪除</button></div></div>`).join('')}</section>`:`<section class="card empty">還沒有票券圖片，可新增優惠券或 QR Code。</section>`}`
+}
+function addTicket(){
+  readImage(ticketPic,pic=>{
+    if(!pic)return alert('請先上傳圖片');
+    trip().tickets.push({title:ticketTitle.value||'未命名圖片',memo:ticketMemo.value||'',pic,createdAt:new Date().toISOString()});
+    render();
+  })
+}
+function editTicket(i){
+  const x=trip().tickets[i];
+  openModal(`<h2>編輯票券圖片</h2><input id="teTitle" value="${esc(x.title||'')}" placeholder="名稱"><textarea id="teMemo" placeholder="備註">${esc(x.memo||'')}</textarea>${x.pic?`<img class="receipt-preview" src="${x.pic}" ${imgAttrs(x.pic)}>`:''}<input id="tePic" type="file" accept="image/*" onchange="previewFile(this,'tePreview')"><div id="tePreview"></div><button class="btn primary" onclick="saveTicketEdit(${i})">儲存</button><button class="btn" onclick="closeModal()">取消</button>`)
+}
+function saveTicketEdit(i){
+  const x=trip().tickets[i];
+  readImage(tePic,pic=>{
+    Object.assign(x,{title:teTitle.value||'未命名圖片',memo:teMemo.value||''});
+    if(pic)x.pic=pic;
+    closeModal();render();
+  })
+}
+function delTicket(i){if(confirm('刪除這張票券圖片？')){trip().tickets.splice(i,1);render()}}
+
 function searchPage(){return `<section class="card"><h2>🔍 全旅程搜尋</h2><input id="q" placeholder="搜尋行程、必買、記帳、備忘、行李，例如：拉麵 / UNIQLO / 燒肉" oninput="doSearch()"><div id="searchResult" class="search-result"><p class="small">輸入關鍵字後會搜尋所有旅程。</p></div></section>`}
-function doSearch(){const kw=q.value.trim().toLowerCase();if(!kw){searchResult.innerHTML='<p class="small">輸入關鍵字後會搜尋所有旅程。</p>';return}let rows=[];state.trips.forEach(t=>{t.days.forEach((day,di)=>day.forEach((x,ii)=>{const text=[x.name,x.memo,x.type,x.arrive,x.map,x.rating].join(' ').toLowerCase();if(text.includes(kw))rows.push({trip:t.name,where:`Day ${di+1}`,title:x.name||'未命名',memo:x.memo||'',go:`currentTripId=${t.id};currentTab=${di+2};render()`})}));t.buy.forEach(x=>{if([x.name,x.area,x.memo].join(' ').toLowerCase().includes(kw))rows.push({trip:t.name,where:'必買',title:x.name,memo:x.area||'',go:`currentTripId=${t.id};currentTab=${4+t.days.length};render()`})});t.expenses.forEach(x=>{if([x.name,x.memo,x.amount].join(' ').toLowerCase().includes(kw))rows.push({trip:t.name,where:'記帳',title:x.name,memo:`${x.amount} ${x.cur||t.mainCurrency}`,go:`currentTripId=${t.id};currentTab=${2+t.days.length};render()`})});(t.notes||[]).forEach(x=>{if([x.title,x.text].join(' ').toLowerCase().includes(kw))rows.push({trip:t.name,where:'備忘',title:x.title||'備忘',memo:x.text||'',go:`currentTripId=${t.id};currentTab=${6+t.days.length};render()`})});(t.luggage||[]).forEach(x=>{if([x.owner,x.item,x.memo].join(' ').toLowerCase().includes(kw))rows.push({trip:t.name,where:'行李',title:x.item||'行李',memo:x.owner||'',go:`currentTripId=${t.id};currentTab=${7+t.days.length};render()`})})});searchResult.innerHTML=rows.length?rows.map(r=>`<section class="mini-result" onclick="${r.go}"><b>${esc(r.title)}</b><p>${esc(r.trip)}｜${esc(r.where)}</p>${r.memo?`<small>${esc(r.memo)}</small>`:''}</section>`).join(''):'<p class="empty">找不到相關內容</p>'}
+function doSearch(){const kw=q.value.trim().toLowerCase();if(!kw){searchResult.innerHTML='<p class="small">輸入關鍵字後會搜尋所有旅程。</p>';return}let rows=[];state.trips.forEach(t=>{t.days.forEach((day,di)=>day.forEach((x,ii)=>{const text=[x.name,x.memo,x.type,x.arrive,x.map,x.rating].join(' ').toLowerCase();if(text.includes(kw))rows.push({trip:t.name,where:`Day ${di+1}`,title:x.name||'未命名',memo:x.memo||'',go:`currentTripId=${t.id};currentTab=${di+2};render()`})}));t.buy.forEach(x=>{if([x.name,x.area,x.memo].join(' ').toLowerCase().includes(kw))rows.push({trip:t.name,where:'必買',title:x.name,memo:x.area||'',go:`currentTripId=${t.id};currentTab=${4+t.days.length};render()`})});t.expenses.forEach(x=>{if([x.name,x.memo,x.amount].join(' ').toLowerCase().includes(kw))rows.push({trip:t.name,where:'記帳',title:x.name,memo:`${x.amount} ${x.cur||t.mainCurrency}`,go:`currentTripId=${t.id};currentTab=${2+t.days.length};render()`})});(t.notes||[]).forEach(x=>{if([x.title,x.text].join(' ').toLowerCase().includes(kw))rows.push({trip:t.name,where:'備忘',title:x.title||'備忘',memo:x.text||'',go:`currentTripId=${t.id};currentTab=${8+t.days.length};render()`})});(t.tickets||[]).forEach(x=>{if([x.title,x.memo].join(' ').toLowerCase().includes(kw))rows.push({trip:t.name,where:'票券',title:x.title||'票券圖片',memo:x.memo||'',go:`currentTripId=${t.id};currentTab=${5+t.days.length};render()`})});(t.luggage||[]).forEach(x=>{if([x.owner,x.item,x.memo].join(' ').toLowerCase().includes(kw))rows.push({trip:t.name,where:'行李',title:x.item||'行李',memo:x.owner||'',go:`currentTripId=${t.id};currentTab=${8+t.days.length};render()`})})});searchResult.innerHTML=rows.length?rows.map(r=>`<section class="mini-result" onclick="${r.go}"><b>${esc(r.title)}</b><p>${esc(r.trip)}｜${esc(r.where)}</p>${r.memo?`<small>${esc(r.memo)}</small>`:''}</section>`).join(''):'<p class="empty">找不到相關內容</p>'}
 
 function notesPage(){const t=trip();return `<section class="card"><h2>📝 備忘錄</h2><input id="noteTitle" placeholder="標題，例如：唐吉軻德"><textarea id="noteText" placeholder="備忘內容"></textarea><button class="btn primary" onclick="addNote()">新增備忘</button></section>${(t.notes||[]).map((n,i)=>`<section class="card"><h3>${esc(n.title||'備忘')}</h3><p class="note">${esc(n.text||'')}</p><button class="btn" onclick="editNote(${i})">編輯</button><button class="btn danger" onclick="delNote(${i})">刪除</button></section>`).join('')}`}
 function addNote(){trip().notes.push({title:noteTitle.value,text:noteText.value});render()}
