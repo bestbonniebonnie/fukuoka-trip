@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Bear Travel Planner 1.0</title>
-  <meta name="theme-color" content="#c9793f" />
+  <title>福岡 Autumn Travel Planner</title>
+  <link rel="stylesheet" href="style.css?v=stable1" />
   <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#c9824a" />
   <link rel="apple-touch-icon" href="icon-192.png" />
-  <link rel="stylesheet" href="style.css?v=1.0" />
 </head>
 <body>
   <header class="app-header">
@@ -30,7 +30,14 @@
     </div>
   </div>
 
-  <script src="app.js?v=1.0"></script>
-  <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(()=>{})}</script>
+  <script src="app.js?v=stable1"></script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function(){
+        navigator.serviceWorker.register('./sw.js').catch(function(){});
+      });
+    }
+  </script>
 </body>
 </html>

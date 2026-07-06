@@ -1,12 +1,1 @@
-{
-  "name": "Bear Travel Planner",
-  "short_name": "Bear Travel",
-  "start_url": "./index.html",
-  "display": "standalone",
-  "background_color": "#ead2b8",
-  "theme_color": "#c9793f",
-  "icons": [
-    {"src":"icon-192.png","sizes":"192x192","type":"image/png"},
-    {"src":"icon-512.png","sizes":"512x512","type":"image/png"}
-  ]
-}
+{"name":"Bear Travel Planner","short_name":"Bear Travel","start_url":"./index.html","display":"standalone","background_color":"#f1d6b8","theme_color":"#c9824a","icons":[{"src":"icon-192.png","sizes":"192x192","type":"image/png"},{"src":"icon-512.png","sizes":"512x512","type":"image/png"}]}
