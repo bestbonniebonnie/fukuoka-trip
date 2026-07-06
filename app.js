@@ -1,10 +1,22 @@
 
-const APP_VERSION="1.0-stable-data";
+const APP_VERSION="1.0-preserve-data-20260706";
 const DATA_VERSION=1;
 const STORE_KEY="bearTravelPlanner"; // 永久資料庫名稱：之後更新都固定用這個，不再因版本號換資料庫
 const BACKUP_KEY="bearTravelPlanner_autoBackup";
+const BACKUP_RING_KEY="bearTravelPlanner_backupRing";
 const MIGRATION_BACKUP_KEY="bearTravelPlanner_beforeMigrationBackup";
-const OLD_KEYS=["bearTravelPlanner_v21","bearTravelPlanner_v20","bearTravelPlanner_v19","bearTravelPlanner_v18","bearTravelPlanner_v17","bearTravelPlanner_v16","bearTravelPlanner_v15","bearTravelPlanner_v14","bearTravelPlanner_v13","bearTravelPlanner_v12","bearTravelPlanner_v11","bearTravelPlanner_v10","bearTravelPlanner_v5","bearTravelPlanner_v3","bearTravelPlanner_v2_full","bearTravelPlanner_v1_full","bearTravelPlannerV4","bearMultiTripV3","bearMultiTrip"];
+const OLD_KEYS=["bearTravelPlanner_1_0","bearTravelPlannerStable","bearTravelPlanner_stable","bearTravelPlanner_v21","bearTravelPlanner_v20","bearTravelPlanner_v19","bearTravelPlanner_v18","bearTravelPlanner_v17","bearTravelPlanner_v16","bearTravelPlanner_v15","bearTravelPlanner_v14","bearTravelPlanner_v13","bearTravelPlanner_v12","bearTravelPlanner_v11","bearTravelPlanner_v10","bearTravelPlanner_v9","bearTravelPlanner_v5","bearTravelPlanner_v3","bearTravelPlanner_v2_full","bearTravelPlanner_v1_full","bearTravelPlannerV4","bearMultiTripV3","bearMultiTrip"];
+function candidateStorageKeys(){
+  const keys=[...OLD_KEYS];
+  try{
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i)||"";
+      if(k===STORE_KEY||k===BACKUP_KEY||k===BACKUP_RING_KEY||k===MIGRATION_BACKUP_KEY)continue;
+      if(/bear.*(travel|planner)|travel.*planner|bearMultiTrip/i.test(k) && !keys.includes(k)) keys.push(k);
+    }
+  }catch(e){}
+  return keys;
+}
 const types=["🏯 景點","🏨 住宿","🍜 美食","🛍 購物","☕ 咖啡廳"];
 const transports=["🚗 開車","🚶‍♀️ 走路","🚕 計程車","🚆 大眾交通","🚌 巴士"];
 const currencies=["JPY","TWD","KRW","THB","USD","EUR"];
@@ -18,30 +30,67 @@ function defTrip(){return {id:Date.now()+Math.random(),name:"🍁 福岡 Autumn"
 function stableWrap(s){s=s&&typeof s==="object"?s:{}; if(Array.isArray(s.trips)){} else if(s.state&&Array.isArray(s.state.trips))s=s.state; else if(s.trip)s={trips:[s.trip]}; else s={trips:[defTrip()]}; s.app="Bear Travel Planner"; s.dataVersion=DATA_VERSION; s.updatedAt=new Date().toISOString(); return s}
 function migrateState(s){s=stableWrap(s); if(!s.trips.length)s.trips=[defTrip()]; s.trips.forEach(norm); return s}
 function readStoredJson(key){const raw=localStorage.getItem(key); if(!raw)return null; return JSON.parse(raw)}
+function looksLikeState(x){
+  if(!x || typeof x!=="object") return false;
+  if(Array.isArray(x.trips)) return true;
+  if(x.state && Array.isArray(x.state.trips)) return true;
+  if(x.trip) return true;
+  return false;
+}
 function loadState(){
   let loaded=null, sourceKey="";
-  try{loaded=readStoredJson(STORE_KEY); if(loaded)sourceKey=STORE_KEY}catch(e){}
+  try{const v=readStoredJson(STORE_KEY); if(looksLikeState(v)){loaded=v;sourceKey=STORE_KEY}}catch(e){}
   if(!loaded){
-    for(const k of OLD_KEYS){
-      try{loaded=readStoredJson(k); if(loaded){sourceKey=k;break}}catch(e){}
+    for(const k of candidateStorageKeys()){
+      try{const v=readStoredJson(k); if(looksLikeState(v)){loaded=v;sourceKey=k;break}}catch(e){}
     }
   }
   if(!loaded){
-    try{const b=readStoredJson(BACKUP_KEY); loaded=b&&b.state; if(loaded)sourceKey=BACKUP_KEY}catch(e){}
+    try{const b=readStoredJson(BACKUP_KEY); if(b&&looksLikeState(b.state)){loaded=b.state;sourceKey=BACKUP_KEY}}catch(e){}
+  }
+  if(!loaded){
+    try{const ring=readStoredJson(BACKUP_RING_KEY)||[]; for(let i=ring.length-1;i>=0;i--){if(looksLikeState(ring[i].state)){loaded=ring[i].state;sourceKey=BACKUP_RING_KEY;break}}}catch(e){}
   }
   let s;
-  try{s=migrateState(loaded||{trips:[defTrip()]})}catch(e){s={trips:[defTrip()],dataVersion:DATA_VERSION}}
+  try{s=migrateState(loaded||{trips:[defTrip()]})}catch(e){console.error('migration failed',e);s={trips:[defTrip()],dataVersion:DATA_VERSION}}
   if(sourceKey && sourceKey!==STORE_KEY){
     try{localStorage.setItem(MIGRATION_BACKUP_KEY,JSON.stringify({time:new Date().toISOString(),from:sourceKey,state:s}))}catch(e){}
     try{localStorage.setItem(STORE_KEY,JSON.stringify(s))}catch(e){}
   }
-  return s
+  return s;
 }
 function norm(t){t.members||=[];t.mainCurrency||="JPY";t.rates=Object.assign({JPY:.21,TWD:1,KRW:.023,THB:.9,USD:32,EUR:35},t.rates||{});t.days=(t.days&&t.days.length)?t.days:[[],[],[],[],[]];t.expenses||=[];t.splits||=[];t.buy||=[];t.dayMeta||=[];t.notes||=[];t.luggage||=[];while(t.dayMeta.length<t.days.length)t.dayMeta.push({weather:"",outfit:""});t.startDate=t.startDate||parseStartDate(t.date)||""; if(!t.flight)t.flight=defTrip().flight; if(typeof t.flight.go==="string")t.flight=defTrip().flight; ["go","back"].forEach(k=>{t.flight[k]||={};Object.assign(t.flight[k],{airline:t.flight[k].airline||"",no:t.flight[k].no||"",from:t.flight[k].from||(k==="go"?"TPE":"FUK"),to:t.flight[k].to||(k==="go"?"FUK":"TPE"),time:fmtTime(t.flight[k].time||""),duration:t.flight[k].duration||"",terminal:t.flight[k].terminal||"",note:t.flight[k].note||""})});t.days.forEach(day=>day.forEach(x=>{x.arrive=fmtTime(x.arrive||"");x.type=x.type||types[0];x.moveTime=x.moveTime||""}));t.expenses.forEach(x=>{x.cur=x.cur||t.mainCurrency||"JPY"});t.splits.forEach(x=>{x.cur=x.cur||t.mainCurrency||"JPY";x.people=x.people||[]})}
 function parseStartDate(str){const m=String(str||"").match(/(\d{4})[.\/-](\d{1,2})[.\/-](\d{1,2})/);if(!m)return "";return `${m[1]}-${String(m[2]).padStart(2,"0")}-${String(m[3]).padStart(2,"0")}`}
+function backupCurrent(reason="auto"){
+  try{
+    const raw=localStorage.getItem(STORE_KEY);
+    if(raw){
+      const parsed=JSON.parse(raw);
+      localStorage.setItem(BACKUP_KEY,JSON.stringify({time:new Date().toISOString(),reason,state:parsed}));
+      let ring=[];
+      try{ring=JSON.parse(localStorage.getItem(BACKUP_RING_KEY)||"[]")}catch(e){ring=[]}
+      ring.push({time:new Date().toISOString(),reason,state:parsed});
+      ring=ring.slice(-5);
+      localStorage.setItem(BACKUP_RING_KEY,JSON.stringify(ring));
+    }
+  }catch(e){console.warn('backup failed',e)}
+}
 function save(){
-  try{state=stableWrap(state);localStorage.setItem(STORE_KEY,JSON.stringify(state));return true}
-  catch(e){console.warn('Bear Travel Planner save failed',e);return false}
+  try{
+    state=migrateState(state);
+    const next=JSON.stringify(stableWrap(state));
+    const prev=localStorage.getItem(STORE_KEY);
+    if(prev && prev!==next) backupCurrent('before-save');
+    localStorage.setItem(STORE_KEY,next);
+    return true;
+  }catch(e){
+    console.warn('Bear Travel Planner save failed',e);
+    try{
+      // 若手機容量不足，至少保留目前畫面，不讓程式清空資料。
+      localStorage.setItem(BACKUP_KEY,JSON.stringify({time:new Date().toISOString(),reason:'failed-save-memory',state:stableWrap(state)}));
+    }catch(_e){}
+    return false;
+  }
 }
 function trip(){return state.trips.find(t=>t.id==currentTripId)}
 function esc(s){return String(s??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;")}
@@ -273,14 +322,37 @@ function downloadText(name,text,type='application/json'){
 }
 function exportTrip(){const t=trip();downloadText(`${safeName(t.name)}.beartravel`,JSON.stringify({version:DATA_VERSION,appVersion:APP_VERSION,exportedAt:new Date().toISOString(),trip:t},null,2))}
 function exportAll(){downloadText(`BearTravel_全部備份_${new Date().toISOString().slice(0,10)}.beartravel`,JSON.stringify({version:DATA_VERSION,appVersion:APP_VERSION,exportedAt:new Date().toISOString(),state},null,2))}
-function importFile(input,mode){const f=input.files&&input.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const data=JSON.parse(r.result);if(data.state){state=data.state}else if(data.trip){const t=data.trip;t.id=Date.now()+Math.random();norm(t);state.trips.push(t);currentTripId=t.id}else if(data.trips){state=data}else{throw new Error('format')}state.trips.forEach(norm);currentTripId=state.trips[0]?.id||null;currentTab=0;save();closeModal();render();alert('匯入完成')}catch(e){alert('檔案格式不正確')}};r.readAsText(f)}
+function importFile(input,mode){const f=input.files&&input.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const data=JSON.parse(r.result);backupCurrent('before-import');if(data.state){state=migrateState(data.state)}else if(data.trip){const t=data.trip;t.id=Date.now()+Math.random();norm(t);state.trips.push(t)}else if(data.trips){state=migrateState(data)}else{throw new Error('format')}state.trips.forEach(norm);currentTripId=state.trips[0]?.id||null;currentTab=0;save();closeModal();render();alert('匯入完成，原本資料已先自動備份')}catch(e){alert('檔案格式不正確')}};r.readAsText(f)}
 function openImport(){openModal(`<h2>匯入／還原</h2><p class="small">可匯入 .beartravel 或 JSON 備份檔。匯入單趟旅程會加入列表；匯入完整備份會覆蓋目前資料。</p><input type="file" accept=".beartravel,.json,application/json" onchange="importFile(this)"><button class="btn" onclick="closeModal()">取消</button>`)}
 function duplicateTrip(){const t=JSON.parse(JSON.stringify(trip()));t.id=Date.now()+Math.random();t.name=t.name+' 複製';norm(t);state.trips.push(t);currentTripId=t.id;currentTab=0;render()}
 function printTrip(){window.print()}
-function autoBackup(){try{localStorage.setItem(BACKUP_KEY,JSON.stringify({time:new Date().toISOString(),state:stableWrap(state)}))}catch(e){console.warn('Bear Travel Planner backup failed',e)}}
-const oldSave=save; save=function(){const ok=oldSave();try{autoBackup()}catch(e){}return ok}
+function autoBackup(){backupCurrent('manual-auto')}
+function restoreLatestBackup(){
+  try{
+    let b=readStoredJson(BACKUP_KEY);
+    if(!b||!looksLikeState(b.state)){
+      const ring=readStoredJson(BACKUP_RING_KEY)||[];
+      b=ring.reverse().find(x=>looksLikeState(x.state));
+    }
+    if(!b||!looksLikeState(b.state)) return alert('目前沒有可還原的自動備份');
+    if(!confirm('確定要還原最近一次自動備份？目前資料會先保留一份備份。')) return;
+    backupCurrent('before-restore');
+    state=migrateState(b.state);
+    currentTripId=state.trips[0]?.id||null;
+    currentTab=0;
+    save();
+    closeModal();
+    render();
+    alert('已還原最近一次自動備份');
+  }catch(e){alert('還原失敗')}
+}
+function clearAppCache(){
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.getRegistrations().then(rs=>Promise.all(rs.map(r=>r.unregister()))).finally(()=>{location.href=location.pathname+'?fresh='+Date.now()});
+  }else location.href=location.pathname+'?fresh='+Date.now();
+}
 
-function toolsPage(){const t=trip(),c=t.mainCurrency||'JPY';return `<section class="card"><h2>⚙️ 工具</h2><p class="small">正式使用前建議先按「一鍵完整備份」。資料存在手機瀏覽器，下載備份後換手機也可以匯入還原。</p><div class="tool-grid"><button class="btn primary" onclick="exportTrip()">匯出這趟旅程</button><button class="btn primary" onclick="exportAll()">一鍵完整備份</button><button class="btn" onclick="openImport()">匯入／還原</button><button class="btn" onclick="duplicateTrip()">複製旅程</button><button class="btn" onclick="printTrip()">匯出 PDF / 列印</button></div><p class="small">目前版本：Bear Travel Planner 1.0 資料穩定版</p></section><section class="card"><h2>💱 匯率換算</h2><div class="grid"><input id="cvAmount" type="number" placeholder="金額，例如 1000"><select id="cvCur">${currencies.map(x=>`<option value="${x}" ${x===c?'selected':''}>${x}</option>`).join('')}</select></div><button class="btn primary" onclick="convertMoney()">換算台幣</button><div id="cvResult" class="note">輸入金額後按換算。</div><h3>匯率設定</h3><p class="small">更改匯率後，記帳與分攤的「約 NT$」會重新換算，原始旅程幣別金額不會被改掉。</p>${currencies.map(x=>`<label>${x} → TWD<input type="number" step="0.0001" value="${t.rates[x]??1}" onchange="trip().rates['${x}']=Number(this.value||1);render()"></label>`).join('')}</section>`}
+function toolsPage(){const t=trip(),c=t.mainCurrency||'JPY';return `<section class="card"><h2>⚙️ 工具</h2><p class="small">正式使用前建議先按「一鍵完整備份」。資料存在手機瀏覽器，下載備份後換手機也可以匯入還原。</p><div class="tool-grid"><button class="btn primary" onclick="exportTrip()">匯出這趟旅程</button><button class="btn primary" onclick="exportAll()">一鍵完整備份</button><button class="btn" onclick="openImport()">匯入 JSON／還原</button><button class="btn" onclick="restoreLatestBackup()">還原自動備份</button><button class="btn" onclick="duplicateTrip()">複製旅程</button><button class="btn" onclick="printTrip()">匯出 PDF / 列印</button><button class="btn" onclick="clearAppCache()">清除舊快取並重開</button></div><p class="small">目前版本：Bear Travel Planner 1.0 資料保留版｜固定資料庫：bearTravelPlanner｜更新 UI 不會換資料庫。</p></section><section class="card"><h2>💱 匯率換算</h2><div class="grid"><input id="cvAmount" type="number" placeholder="金額，例如 1000"><select id="cvCur">${currencies.map(x=>`<option value="${x}" ${x===c?'selected':''}>${x}</option>`).join('')}</select></div><button class="btn primary" onclick="convertMoney()">換算台幣</button><div id="cvResult" class="note">輸入金額後按換算。</div><h3>匯率設定</h3><p class="small">更改匯率後，記帳與分攤的「約 NT$」會重新換算，原始旅程幣別金額不會被改掉。</p>${currencies.map(x=>`<label>${x} → TWD<input type="number" step="0.0001" value="${t.rates[x]??1}" onchange="trip().rates['${x}']=Number(this.value||1);render()"></label>`).join('')}</section>`}
 function convertMoney(){const a=Number(cvAmount.value||0),cur=cvCur.value,rate=trip().rates[cur]||1;cvResult.textContent=`約 NT$ ${Math.round(a*rate)}（${a} ${cur} × ${rate}）`}
 
 function searchPage(){return `<section class="card"><h2>🔍 全旅程搜尋</h2><input id="q" placeholder="搜尋行程、必買、記帳、備忘、行李，例如：拉麵 / UNIQLO / 燒肉" oninput="doSearch()"><div id="searchResult" class="search-result"><p class="small">輸入關鍵字後會搜尋所有旅程。</p></div></section>`}
