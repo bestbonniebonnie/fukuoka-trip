@@ -170,3 +170,38 @@ body{background:linear-gradient(180deg,#dfbf9e 0%,#d5aa82 52%,#c99468 100%)}
 /* Cross-day copy / move tools */
 .filters .day-tool-btn{background:#f3dfc7!important;color:#6b432d!important;border-color:#d9b58e!important;flex:0 0 auto}
 .scan-choice .btn.dark,.btn.dark{background:#8b6548;color:#fff}
+
+
+/* =========================================================
+   v22 A｜奶茶咖啡旅行手帳
+   ========================================================= */
+:root{
+  --v22-milk:#f7ead9;
+  --v22-cream:#fffaf2;
+  --v22-latte:#d8b08a;
+  --v22-caramel:#b87546;
+  --v22-coffee:#563725;
+  --v22-soft:#8d674d;
+}
+body{
+  background:
+    radial-gradient(circle at 12% 4%,rgba(255,250,242,.72),transparent 28%),
+    linear-gradient(180deg,#efd8bf 0%,#e3c09e 56%,#d6a97f 100%);
+  font-family:"Arial Rounded MT Bold","SF Pro Rounded","PingFang TC","Noto Sans TC",sans-serif;
+}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.16;background-image:radial-gradient(#74472c 0.55px,transparent .55px);background-size:12px 12px;z-index:-1}
+.app-header{background:rgba(255,249,240,.92);border-bottom-color:#ddbea0}
+h1#mainTitle{font-family:"Arial Rounded MT Bold","SF Pro Rounded","PingFang TC",sans-serif;letter-spacing:.1px}
+.eyebrow{font-size:11px;letter-spacing:1.8px;font-weight:900;color:#a06b45;margin:0 0 5px}
+.full-btn{width:100%;margin:6px 0}
+.trip-list-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:10px 2px 4px}
+.trip-list-head h2{margin:0;font-size:27px}.trip-list-head .small{margin:6px 0 0}.add-trip-button{flex:0 0 auto;box-shadow:0 8px 18px #8c57302b}
+.trip-list-grid{display:grid;gap:12px}.trip-card{padding:0;overflow:hidden}.trip-card-open{display:flex;gap:13px;align-items:flex-start;padding:17px;cursor:pointer}.trip-card-season{width:52px;height:52px;border-radius:18px;background:#f1dfca;display:flex;align-items:center;justify-content:center;font-size:27px;flex:0 0 auto}.trip-card h2{margin:0 0 5px;font-size:21px}.trip-date{margin:0 0 4px;font-weight:850;color:#765038}.trip-card-actions{display:flex;justify-content:flex-end;gap:5px;padding:9px 13px;background:#f4e4d2;border-top:1px solid #e2c7ab}
+.flight-direction{margin:18px 4px 8px}.flight-airline{display:flex;align-items:center;gap:10px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,.2)}.flight-airline>span{font-size:26px}.flight-airline small,.flight-info-v22 small{display:block;opacity:.7;font-size:10px;letter-spacing:1px}.flight-airline b{display:block;margin-top:2px;font-size:17px}.flight-path{display:flex;align-items:center;gap:7px;flex:1;margin:0 16px}.flight-path span{height:1px;background:rgba(255,255,255,.45);flex:1}.flight-path b{font-size:23px}.flight-info-v22{grid-template-columns:1fr 1fr}.flight-info-v22 .flight-note{grid-column:1/-1;background:rgba(255,255,255,.1);border-radius:13px;padding:10px}.flight-info-v22 .flight-note b{font-size:14px;line-height:1.5;font-weight:700}
+.timeline{padding-left:0}.timeline:before{left:64px}.timeline-entry{display:grid;grid-template-columns:52px minmax(0,1fr);gap:15px;align-items:start;position:relative}.timeline-time{text-align:right;padding-top:23px;font-size:14px;font-weight:950;color:#633e28;letter-spacing:.2px}.timeline-entry .it-card{margin:8px 0}.timeline-entry .it-card:before{left:-24px}.right-time{display:none!important}
+.split-summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:10px 0 18px}.split-summary-grid .split-total{background:#fffaf2;border:1px solid #e3c6a7;border-radius:17px;padding:10px;min-width:0;text-align:center;box-shadow:0 5px 12px #6e422713}.split-summary-grid .split-total b{font-size:13px}.split-summary-grid .split-total .money{font-size:17px;margin-top:4px}.split-summary-grid .split-total .small{font-size:11px;margin:3px 0}
+.upload-box{display:flex;align-items:center;justify-content:center;border:1px dashed #c99e77;border-radius:15px;padding:12px;margin:7px 0;background:#fff3e4;color:#795036;cursor:pointer}.notes-grid{display:grid;gap:12px}.note-card{overflow:hidden}.note-photo{width:100%;max-height:230px;object-fit:cover;border-radius:17px;margin-bottom:10px;cursor:zoom-in}
+#seasonalDecor{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden}#seasonalDecor span{position:absolute;left:calc(var(--x)*1%);top:-40px;font-size:18px;opacity:.22;animation:v22Fall 13s linear infinite;animation-delay:var(--delay);filter:blur(.1px)}#seasonalDecor span:nth-child(3n){font-size:13px;animation-duration:17s}#seasonalDecor span:nth-child(4n){font-size:22px;animation-duration:20s}@keyframes v22Fall{0%{transform:translate3d(0,-10vh,0) rotate(0deg)}50%{transform:translate3d(35px,52vh,0) rotate(180deg)}100%{transform:translate3d(-20px,112vh,0) rotate(360deg)}}
+main,.app-header{position:relative;z-index:2}
+@media(max-width:430px){.trip-list-head{align-items:flex-start}.trip-list-head h2{font-size:24px}.add-trip-button{padding:9px 11px}.timeline-entry{grid-template-columns:45px minmax(0,1fr);gap:12px}.timeline:before{left:56px}.timeline-time{font-size:12px;padding-top:22px}.timeline-entry .it-card:before{left:-21px}.split-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.flight-path{margin:0 8px}}
+@media(prefers-reduced-motion:reduce){#seasonalDecor{display:none}}
