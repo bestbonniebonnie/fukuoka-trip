@@ -239,50 +239,59 @@ body{font-weight:400}
 
 @media(max-width:430px){.timeline-entry{grid-template-columns:82px minmax(0,1fr)}.timeline:before{left:36px}.time-rail time{font-size:22px!important}.time-rail i{left:29px}.travel-step{margin-left:10px!important}.it-thumb{width:60px!important;height:60px!important}.split-add-btn{padding:12px 15px;font-size:14px}}
 
+/* ===== v24.1 stable UI adjustments ===== */
+.title-name{display:block;font-weight:900;line-height:1.15}
+.title-date{display:block;margin-top:3px;font-family:var(--doll),"Noto Sans TC",sans-serif;font-size:14px;font-weight:500;letter-spacing:.3px;color:#9b6742}
+.trip-list-head.compact{justify-content:flex-end;margin:8px 2px 12px}
+.day-heading.clean{margin-bottom:12px}
+.day-command-row.two{grid-template-columns:repeat(2,minmax(0,1fr))}
 
-/* v25：依照最新截圖修正 */
-#mainTitle{display:flex;flex-direction:column;gap:0;line-height:1.05}
-#mainTitle .title-name{font-family:"Noto Sans TC",sans-serif;font-weight:800;font-size:25px}
-#mainTitle .title-date{font-family:var(--doll),"Noto Sans TC",cursive;font-weight:400!important;font-size:24px;letter-spacing:.2px;margin-top:3px}
-.trip-list-head.compact{display:flex;justify-content:flex-end;margin:7px 0 12px}.trip-list-head.compact .create-trip-btn{margin-left:auto}
-.day-heading.clean{padding-top:4px}.day-heading.clean h2{margin:0 0 12px}.day-label{display:none!important}
-.day-command-row.two{grid-template-columns:1fr 1fr;max-width:430px}
+/* keep the time completely outside the itinerary card */
+.timeline-entry{grid-template-columns:74px minmax(0,1fr)!important;gap:10px!important}
+.timeline:before{left:32px!important;top:40px!important}
+.time-rail{padding-top:42px!important;text-align:left!important;overflow:visible}
+.time-rail time{display:block;font-size:21px!important;white-space:nowrap;transform:none!important}
+.time-rail i{left:26px!important;top:77px!important;width:12px!important;height:12px!important;box-shadow:0 0 0 4px #744326!important}
+.it-card{min-width:0!important}
 
-/* 時間和時間軸完全分開 */
-.timeline{padding-left:0!important}
-.timeline-entry{grid-template-columns:118px minmax(0,1fr)!important;column-gap:12px!important}
-.timeline:before{left:91px!important;top:26px!important;bottom:20px!important}
-.time-rail{position:relative;padding-top:48px!important;min-height:135px}
-.time-rail time{display:block;width:76px;text-align:right;font-size:24px!important;line-height:1;color:#fff;white-space:nowrap;padding-right:5px}
-.time-rail i{left:84px!important;top:79px!important;width:14px!important;height:14px!important}
-.it-card{grid-column:2;min-width:0}
-.travel-step{grid-column:2!important;margin:10px 0 2px 18px!important;padding:6px 14px!important;min-height:34px!important;line-height:1.15!important;gap:9px!important;border-width:1.5px!important}
+/* small transport pill between cards */
+.travel-step{grid-column:2!important;justify-self:start!important;margin:9px 0 0 8px!important;padding:6px 11px!important;gap:6px!important;font-size:12px!important;border-width:1px!important;box-shadow:0 4px 9px rgba(50,23,9,.16)!important}
 .travel-step span,.travel-step b{font-size:12px!important}
-.card-corner-actions{display:flex;flex-direction:column;align-items:center;gap:5px;flex:0 0 auto}
-.trash-icon,.more-btn{border:0;background:transparent;color:#785034;padding:2px;font-size:18px;line-height:1}
-.trash-icon{font-size:17px}
+.travel-step:before{display:none!important}
 
-/* 頁面標題與右上角新增 */
-.page-title-row{display:flex;align-items:center;justify-content:space-between;margin:10px 2px 14px;color:#fff}.page-title-row h2{margin:0;font-size:22px}.small-add-btn{border:0;border-radius:999px;background:linear-gradient(180deg,#d5944f,#bc7135);color:#fff;padding:9px 14px;font-family:var(--doll),"Noto Sans TC";font-size:13px;font-weight:500;box-shadow:0 7px 15px #3f1e0d38}.member-add{margin-top:9px}.modal-title-row{display:flex;align-items:center;justify-content:space-between}.modal-title-row h2{margin:0}
+/* itinerary actions */
+.card-top-actions{display:flex;flex-direction:column;align-items:center;gap:4px;flex:0 0 auto}
+.card-trash{width:32px;height:32px;border:0;border-radius:50%;background:rgba(255,255,255,.7);display:grid;place-items:center;font-size:15px;cursor:pointer}
+.more-btn{width:32px;height:32px}
 
-/* 記帳、備忘卡片縮小，一排三個 */
-.compact-total{background:#f1ddbc;border:1px solid #d4ad80;border-radius:18px;padding:12px 14px;margin-bottom:13px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}.compact-total b{font-size:13px}.compact-total strong{font-family:var(--doll),sans-serif;font-weight:500;font-size:18px;color:#925326}.compact-total small{font-size:11px;color:#72513a}
-.compact-card-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.compact-data-card{position:relative;min-width:0;background:#fffaf3;border:1px solid #d6b187;border-radius:17px;padding:9px;box-shadow:0 7px 15px #3d1b0b2c;overflow:hidden}.compact-data-card>img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:11px;margin-bottom:6px}.compact-data-card h3{font-size:13px;margin:2px 0 5px;line-height:1.25;word-break:break-word}.compact-data-card>b{display:block;font-family:var(--doll),sans-serif;font-size:13px;font-weight:500;color:#a15d2f}.compact-data-card>small{display:block;font-size:9px;color:#75523b;margin-top:2px}.compact-data-card p{font-size:10px;line-height:1.35;margin:5px 0;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.compact-data-card>a{display:block;font-size:10px;color:#5f875e;margin:5px 0}.compact-data-card>div:last-child{display:flex;justify-content:flex-end;gap:5px;margin-top:6px}.compact-data-card button{border:0;background:#ead9bf;border-radius:999px;width:26px;height:26px;font-size:12px}.compact-data-card button.delete{background:#f1d1c9;color:#aa4f3d}.grid-empty{grid-column:1/-1}
+/* three cards per row */
+.expense-grid,.note-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.expense-grid .card,.note-grid .card{margin:0;min-width:0;padding:11px!important;border-radius:18px!important}
+.expense-card h3,.note-card h3{font-size:15px;margin:5px 0;word-break:break-word}
+.expense-card .money{font-size:17px}
+.expense-card .small,.note-card .note{font-size:11px}
+.expense-card-photo,.note-grid .note-photo{width:100%;height:72px;object-fit:cover;border-radius:12px;margin:0 0 7px}
+.compact-actions{display:flex;gap:4px;flex-wrap:wrap;margin-top:7px}
+.compact-actions .btn{font-size:11px;padding:6px 8px;margin:0}
+.page-toolbar{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.page-toolbar h2{margin:0}
+.toolbar-actions{display:flex;justify-content:flex-end;gap:5px;flex-wrap:wrap}
+.page-toolbar .total-money{margin-top:8px}
 
 @media(max-width:430px){
-  #mainTitle .title-name{font-size:23px}#mainTitle .title-date{font-size:22px}
-  .timeline-entry{grid-template-columns:104px minmax(0,1fr)!important;column-gap:8px!important}.timeline:before{left:80px!important}.time-rail time{width:67px;font-size:21px!important}.time-rail i{left:73px!important}.travel-step{margin-left:12px!important;padding:6px 12px!important}
-  .compact-card-grid{gap:7px}.compact-data-card{padding:7px;border-radius:15px}.compact-data-card h3{font-size:12px}.compact-data-card>b{font-size:11px}.compact-data-card>small{font-size:8px}
+  .timeline-entry{grid-template-columns:68px minmax(0,1fr)!important;gap:8px!important}
+  .timeline:before{left:29px!important}
+  .time-rail time{font-size:19px!important}
+  .time-rail i{left:23px!important}
+  .it-body{padding:13px 10px 11px 0!important}
+  .card-order{width:40px!important;flex-basis:40px!important}
+  .it-title{font-size:17px!important}
+  .it-thumb{width:56px!important;height:56px!important}
+  .expense-grid,.note-grid{gap:7px}
+  .expense-grid .card,.note-grid .card{padding:8px!important}
+  .expense-card h3,.note-card h3{font-size:13px}
+  .expense-card .money{font-size:15px}
+  .expense-card-photo,.note-grid .note-photo{height:58px}
+  .page-toolbar{align-items:center}
+  .toolbar-actions .btn{font-size:12px;padding:8px 10px}
 }
-
-
-/* ===== v25.1 repair and compact layout ===== */
-.title-date{display:block;margin-top:3px;font-family:"DynaPuff","Comic Sans MS",cursive;font-size:13px;font-weight:500;letter-spacing:.4px;color:#9a6847}
-.day-heading.clean h2{margin:2px 0 8px;font-size:20px}.day-heading.clean h2 small{font-family:"DynaPuff",cursive;font-size:12px}
-.timeline{padding-left:42px!important}.timeline:before{left:26px!important}.it-card{margin-left:14px!important}.it-card:before{left:-36px!important}
-.move-line{min-height:0!important;padding:4px 10px!important;line-height:1.2!important;margin:7px 0 7px 14px!important;font-size:12px!important}
-.it-delete-btn{border:0;background:#b95b4a;color:#fff;border-radius:999px;width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;font-size:15px;margin-left:auto}
-.compact-card-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.compact-data-card{min-width:0;padding:9px!important;border-radius:16px!important}.compact-data-card h3{font-size:13px!important;line-height:1.3;margin:5px 0!important;word-break:break-word}.compact-data-card>img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:12px}.compact-data-card p,.compact-data-card small{font-size:10px!important;line-height:1.35}.compact-data-card>div{display:flex;gap:4px;justify-content:flex-end}.compact-data-card>div button{border:0;border-radius:999px;padding:5px 7px;background:#ead8c5}.compact-data-card>div button.delete{background:#b95b4a;color:#fff}
-.page-title-row{display:flex;align-items:center;justify-content:space-between;gap:10px}.small-add-btn{border:0;border-radius:999px;background:#c9793f;color:#fff;font-weight:900;padding:8px 12px}
-.today-route-list{display:flex;flex-direction:column;gap:8px;margin:12px 0}.today-route-row{display:grid;grid-template-columns:64px 1fr;gap:10px;align-items:center;padding:10px 12px;border-radius:14px;background:#f4e3d0}.today-route-row b{font-family:"DynaPuff",cursive}.error-card{border:2px solid #b95b4a}.error-card p{word-break:break-word}
-@media(max-width:380px){.compact-card-grid{gap:6px}.compact-data-card{padding:7px!important}.timeline{padding-left:36px!important}.timeline:before{left:22px!important}}
