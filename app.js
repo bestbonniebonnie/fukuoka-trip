@@ -108,6 +108,41 @@ function saveFlight(which){trip().flight[which]={airline:fAirline.value,no:fNo.v
 function weatherIcon(text){const v=String(text||"");if(/雨|rain|傘/.test(v))return "🌧️";if(/雷/.test(v))return "⛈️";if(/雪/.test(v))return "❄️";if(/晴|太陽|sun/.test(v))return "☀️";if(/多雲|雲/.test(v))return "⛅";if(/陰|cloud/.test(v))return "☁️";if(/冷|涼/.test(v))return "🌬️";return "☁️"}
 function day(i){const t=trip(),list=t.days[i],meta=t.dayMeta[i]||{weather:"",outfit:""},d=dayDate(i);return `<section class="day-stage"><div class="day-heading clean"><h2>${d.full} <small>(${d.w})</small></h2></div><div class="date-strip">${t.days.map((_,idx)=>{const dd=dayDate(idx);return `<div class="date-chip ${idx===i?'active':''}" onclick="setTab(${idx+2})"><div class="date-main">${dd.w}</div><div class="week-main">${dd.d}</div></div>`}).join("")}<button class="date-chip add-day-chip" onclick="trip().days.push([]);trip().dayMeta.push({weather:'',outfit:''});render()"><span>＋</span><small>加一天</small></button></div><div class="day-meta-grid"><div class="mini-info-card"><div class="mini-info-head"><b>${weatherIcon(meta.weather)} 天氣</b><button class="tiny-edit" onclick="editDayMeta(${i},'weather')">編輯</button></div><p>${esc(meta.weather||"點編輯輸入天氣")}</p></div><div class="mini-info-card"><div class="mini-info-head"><b>👕 穿著備註</b><button class="tiny-edit" onclick="editDayMeta(${i},'outfit')">編輯</button></div><p>${esc(meta.outfit||"點編輯輸入穿著備註")}</p></div></div><div class="day-command-row two"><button onclick="openDayMoveModal(${i})">▦ 整趟總覽</button><button onclick="showTodayRoute(${i})">⌘ 今日路線</button></div></section><div class="filters">${["全部","景點","住宿","美食","購物"].map(f=>`<button class="${filterType===f?'on':''}" onclick="filterType='${f}';render()">${f}</button>`).join("")}<button class="add-filter" onclick="openItForm(${i})">＋ 新增行程</button><button class="day-tool-btn danger-soft" onclick="removeCurrentDay(${i})">刪除此天</button></div>${filteredList(list).length?`<div class="timeline">${filteredList(list).map(x=>card(x,list.indexOf(x),i,list)).join("")}</div>`:`<section class="card empty">這一天還沒有行程，按「新增行程」開始安排 🍂</section>`}`}
 
+
+
+/* ===== v25.1 missing itinerary helpers + safe rendering ===== */
+function filteredList(list){
+  const rows=Array.isArray(list)?list:[];
+  if(filterType==="全部")return rows;
+  return rows.filter(x=>String(x?.type||"").includes(filterType));
+}
+function editDayMeta(i,key){
+  const meta=trip().dayMeta[i]||(trip().dayMeta[i]={weather:"",outfit:""});
+  const label=key==="weather"?"天氣":"穿著備註";
+  openModal(`<h2>編輯${label}</h2><textarea id="dayMetaValue" placeholder="請輸入${label}">${esc(meta[key]||"")}</textarea><button class="btn primary" onclick="trip().dayMeta[${i}]['${key}']=dayMetaValue.value;closeModal();render()">儲存</button><button class="btn" onclick="closeModal()">取消</button>`);
+}
+function showTodayRoute(d){
+  const rows=trip().days[d]||[];
+  openModal(`<h2>今日路線</h2>${rows.length?`<div class="today-route-list">${rows.map(x=>`<div class="today-route-row"><b>${esc(fmtTime(x.arrive)||'--:--')}</b><span>${esc(x.name||'未命名行程')}</span></div>`).join('')}</div>`:'<p class="empty-route">今天尚未新增行程</p>'}<button class="btn" onclick="closeModal()">關閉</button>`);
+}
+function removeCurrentDay(i){
+  if(trip().days.length<=1)return alert("至少保留一天");
+  if(!confirm(`確定刪除 Day ${i+1}？`))return;
+  trip().days.splice(i,1);trip().dayMeta.splice(i,1);
+  currentTab=Math.min(currentTab,trip().days.length+1);render();
+}
+function previewFile(input,targetId){
+  const box=document.getElementById(targetId);if(!box)return;
+  const f=input.files&&input.files[0];if(!f){box.innerHTML='';return}
+  const r=new FileReader();r.onload=()=>box.innerHTML=`<img class="receipt-preview" src="${r.result}">`;r.readAsDataURL(f);
+}
+function card(x,i,d,list){
+  const photo=x.photo?`<img class="it-thumb" src="${x.photo}" ${imgAttrs(x.photo)}>`:"";
+  const map=x.map?`<a class="btn green" target="_blank" rel="noopener" href="${esc(x.map)}">導航</a>`:"";
+  const move=(x.trans||x.moveTime)?`<div class="move-line">${esc([x.trans,x.moveTime].filter(Boolean).join('・'))}</div>`:"";
+  return `${i>0?move:""}<article class="it-card ${itemClass(x)} ${x.done?'done':''}" data-idx="${i}" draggable="true" ondragstart="window.dragIndex=${i}" ondragover="event.preventDefault()" ondrop="dropItem(${d},${i})"><div class="it-top">${photo}<div class="it-main"><div class="it-title-row"><div class="it-title"><span class="inline-icon">${typeIcon(x.type)}</span>${esc(x.name||'未命名行程')}</div>${x.arrive?`<span class="right-time">${esc(fmtTime(x.arrive))}</span>`:""}</div><div class="chips">${x.stay?`<span class="chip">停留 ${esc(x.stay)}</span>`:""}${x.rating?`<span class="chip">${esc(x.rating)}</span>`:""}</div>${x.memo?`<p class="note">${esc(x.memo)}</p>`:""}</div></div><div class="card-actions-row"><button class="btn" onclick="toggleDone(${d},${i})">${x.done?'取消完成':'完成'}</button>${map}<button class="btn" onclick="editItem(${d},${i})">編輯</button><button class="btn" onclick="openItemMoveModal(${d},${i})">跨天</button><button class="it-delete-btn" onclick="delItem(${d},${i})" aria-label="刪除行程">🗑</button><span class="drag-grip" ontouchstart="startTouchDrag(event,${d},${i})" ontouchmove="moveTouchDrag(event)" ontouchend="endTouchDrag(event)">⋮⋮</span></div></article>`;
+}
+
 function saveCoverFromUrl(d,i){
   const url=(coverUrl.value||"").trim();
   if(!url)return alert("請先貼上圖片網址");
@@ -304,4 +339,4 @@ function openLuggageForm(){openModal(`<div class="modal-title-row"><h2>新增行
 function addLuggage(){trip().luggage.push({owner:lugOwner.value||'共用',item:lugItem.value,memo:lugMemo.value,done:false});closeModal();render()}
 function toggleLuggage(i){trip().luggage[i].done=!trip().luggage[i].done;render()}
 function delLuggage(i){if(confirm('刪除行李？')){trip().luggage.splice(i,1);render()}}
-render();
+try{render()}catch(err){console.error(err);const target=document.getElementById("app");if(target)target.innerHTML=`<section class="card error-card"><h2>頁面載入失敗</h2><p>${esc(err?.message||err)}</p><button class="btn primary" onclick="localStorage.removeItem(STORE_KEY);location.reload()">重設此版本資料後重新載入</button></section>`}
