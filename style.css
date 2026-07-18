@@ -295,3 +295,51 @@ body{font-weight:400}
   .page-toolbar{align-items:center}
   .toolbar-actions .btn{font-size:12px;padding:8px 10px}
 }
+
+
+/* ===== v24.2 requested fixes ===== */
+/* shorter date chips */
+.date-chip{height:78px!important;min-height:78px!important;padding:6px 7px!important;border-radius:19px!important}
+.date-chip .date-main{font-size:11px!important;line-height:1.1!important}
+.date-chip .week-main{font-size:25px!important;line-height:1!important;margin-top:2px!important}
+.add-day-chip span{font-size:22px!important;line-height:1!important}.add-day-chip small{font-size:10px!important}
+
+/* timeline is placed to the right of the full time text */
+.timeline{padding-left:0!important}
+.timeline-entry{grid-template-columns:92px minmax(0,1fr)!important;gap:8px!important}
+.timeline:before{left:79px!important;top:42px!important;bottom:14px!important}
+.time-rail{padding-top:41px!important;text-align:left!important;position:relative!important;z-index:2!important}
+.time-rail time{display:block!important;width:62px!important;text-align:left!important;font-size:20px!important;line-height:1!important;white-space:nowrap!important;background:transparent!important}
+.time-rail i{left:73px!important;top:73px!important;width:11px!important;height:11px!important;z-index:3!important}
+.travel-step{grid-column:2!important;margin-left:7px!important}
+
+/* itinerary delete is only inside the editor */
+.card-trash{display:none!important}.card-top-actions{display:block!important}.editor-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}.editor-actions .btn{flex:1 1 120px}
+
+/* centered, closable image preview */
+.modal.image-preview-mode{align-items:center!important;justify-content:center!important;padding:18px!important}
+.modal.image-preview-mode .sheet{width:min(92vw,620px)!important;max-height:84vh!important;border-radius:24px!important;padding:14px!important;overflow:auto!important}
+.preview-head{display:flex;justify-content:space-between;align-items:center;gap:12px}.preview-head h2{margin:0}.modal-x{width:38px;height:38px;border:0;border-radius:50%;background:#ead8c5;color:#4f3425;font-size:25px;line-height:1;display:grid;place-items:center}
+.full-preview{display:block!important;width:auto!important;max-width:100%!important;height:auto!important;max-height:62vh!important;object-fit:contain!important;margin:10px auto!important;border-radius:16px!important;padding:4px!important}
+.preview-tip{text-align:center;margin:7px 0 0!important}
+
+/* collapsible add forms */
+.add-panel{margin-top:10px;border:1px solid var(--line);border-radius:18px;background:#fffaf2;overflow:hidden}
+.add-panel summary{list-style:none;cursor:pointer;padding:11px 14px;font-weight:700;color:#fff;background:var(--accent);text-align:center}
+.add-panel summary::-webkit-details-marker{display:none}.add-panel[open] summary{border-radius:0}.add-panel-body{padding:12px}
+.rate-title-row{display:flex;align-items:center;justify-content:space-between;gap:10px}.rate-title-row h3{margin:8px 0}
+
+/* flight layout */
+.flight-stop{text-align:center}.flight-stop time{display:block;font-family:var(--doll),sans-serif;font-size:20px;margin-bottom:4px}.flight-info.two{grid-template-columns:minmax(0,.7fr) minmax(0,1.3fr)!important}.flight-note-cell b{white-space:pre-wrap;word-break:break-word}
+
+@media(max-width:430px){
+  .timeline-entry{grid-template-columns:84px minmax(0,1fr)!important;gap:7px!important}
+  .timeline:before{left:72px!important}
+  .time-rail time{width:58px!important;font-size:18px!important}
+  .time-rail i{left:66px!important;top:72px!important}
+  .date-chip{height:74px!important;min-height:74px!important;min-width:66px!important}
+  .date-chip .week-main{font-size:23px!important}
+  .modal.image-preview-mode{padding:12px!important}
+  .full-preview{max-height:58vh!important}
+  .flight-info.two{grid-template-columns:1fr 1fr!important;gap:8px!important}
+}
